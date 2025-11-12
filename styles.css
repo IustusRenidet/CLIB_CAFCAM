@@ -1,0 +1,504 @@
+:root {
+  /* Tono principal utilizado para resaltar botones y elementos interactivos. */
+  --color-azul: #1d4ed8;
+  /* Variante clara del azul para fondos degradados y resaltados suaves. */
+  --color-azul-suave: #e6ecff;
+  /* Color naranja que sirve como acento secundario para tarjetas informativas. */
+  --color-naranja: #f97316;
+  /* Matiz claro del naranja que suaviza los degradados secundarios. */
+  --color-naranja-suave: #ffe9d6;
+  /* Color base del texto principal que asegura buen contraste. */
+  --color-texto: #1f2937;
+  /* Tono grisáceo para textos secundarios y etiquetas. */
+  --color-texto-suave: #6b7280;
+  /* Fondo general aplicado al body para diferenciarlo de los paneles. */
+  --color-fondo: #f4f7fb;
+  /* Color blanco puro utilizado en paneles y tarjetas. */
+  --color-panel: #ffffff;
+  /* Color neutro para bordes y divisiones ligeras. */
+  --color-borde: #d4dcf4;
+}
+
+body {
+  /* Establece un fondo suave y centra el contenido principal. */
+  background-color: var(--color-fondo);
+  /* Tipografía del sistema que mantiene legibilidad en Windows. */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  /* Color por defecto del texto en la aplicación. */
+  color: var(--color-texto);
+  /* Eliminamos márgenes para que el layout use todo el viewport. */
+  margin: 0;
+  /* Altura mínima igual al alto de la ventana para centrar verticalmente. */
+  min-height: 100vh;
+  /* Utilizamos flexbox para centrar el contenedor principal. */
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  /* Relleno general para evitar que el contenido toque los bordes. */
+  padding: 2rem 1rem;
+}
+
+.app {
+  /* Color de fondo del panel principal. */
+  background-color: var(--color-panel);
+  /* Esquinas redondeadas que dan sensación de tarjeta. */
+  border-radius: 1.5rem;
+  /* Sombra suave para separar visualmente del fondo. */
+  box-shadow: 0 18px 45px rgba(29, 78, 216, 0.08);
+  /* Espaciado interno para que los elementos respiren. */
+  padding: 2.5rem;
+  /* Ancho fluido que se adapta al tamaño de la pantalla. */
+  width: 100%;
+  /* Limitamos el ancho máximo para mantener lineas de lectura cómodas. */
+  max-width: 1400px;
+}
+
+.app__header {
+  /* Línea inferior que separa el encabezado de los controles. */
+  border-bottom: 1px solid var(--color-borde);
+  /* Espacio inferior que evita que el contenido quede muy pegado. */
+  padding-bottom: 1.5rem;
+}
+
+.app__badge {
+  /* Color azul que mantiene la identidad visual del producto. */
+  color: var(--color-azul);
+  /* Tamaño pequeño pensado para etiquetas superiores. */
+  font-size: 0.75rem;
+  /* Grosor medio para destacar el texto. */
+  font-weight: 600;
+  /* Espaciado entre letras que mejora la lectura de textos en mayúsculas. */
+  letter-spacing: 0.28em;
+}
+
+.app__title {
+  /* Escala fluida que ajusta el tamaño del título según el viewport. */
+  font-size: clamp(1.5rem, 2vw + 0.9rem, 2.2rem);
+  /* Peso fuerte para jerarquizar el encabezado. */
+  font-weight: 700;
+  /* Utiliza el color de texto principal para mantener contraste. */
+  color: var(--color-texto);
+  /* Margen inferior que separa el título del contenido siguiente. */
+  margin-bottom: 0.75rem;
+}
+
+.app__subtitle {
+  /* Texto secundario más tenue para descripciones. */
+  color: var(--color-texto-suave);
+  /* Limitamos el ancho para que sea cómodo de leer. */
+  max-width: 600px;
+  /* Centramos el subtítulo tanto en pantallas pequeñas como grandes. */
+  margin: 0 auto;
+}
+
+.small-label {
+  /* Usa el color gris para etiquetar sin llamar demasiada atención. */
+  color: var(--color-texto-suave);
+  /* Convertimos el texto en mayúsculas para simular una etiqueta. */
+  text-transform: uppercase;
+  /* Ligero espaciado entre letras para mejorar legibilidad en mayúsculas. */
+  letter-spacing: 0.08em;
+  /* Tamaño compacto que diferencia las etiquetas de los valores. */
+  font-size: 0.8rem;
+}
+
+.control-busqueda {
+  /* Borde suave que combina con el resto de paneles. */
+  border: 1px solid var(--color-borde);
+  /* Esquinas ligeramente redondeadas para armonizar con el diseño. */
+  border-radius: 0.85rem;
+  /* Relleno amplio que facilita la interacción táctil. */
+  padding: 0.85rem 1.15rem;
+}
+
+.control-busqueda:focus {
+  /* Borde azul que indica el foco activo del control. */
+  border-color: var(--color-azul);
+  /* Sombra tipo halo para accesibilidad visual. */
+  box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.15);
+}
+
+.summary-card {
+  /* Flexbox permite alinear verticalmente la información de la tarjeta. */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* Separación entre etiqueta y valor dentro de la tarjeta. */
+  gap: 0.35rem;
+  /* Esquinas redondeadas en consonancia con el resto de la interfaz. */
+  border-radius: 1rem;
+  /* Espacio interno cómodo para la lectura. */
+  padding: 1.5rem;
+  /* Delimitación sutil de la tarjeta respecto al fondo. */
+  border: 1px solid var(--color-borde);
+}
+
+.summary-card--primary {
+  /* Degradado azul claro para destacar el total de registros. */
+  background: linear-gradient(135deg, var(--color-azul-suave), #f7f9ff);
+  /* Borde lateral que refuerza el color temático de la tarjeta. */
+  border-left: 5px solid var(--color-azul);
+}
+
+.summary-card--accent {
+  /* Degradado naranja que diferencia el contador de coincidencias. */
+  background: linear-gradient(135deg, var(--color-naranja-suave), #fff5eb);
+  /* Borde lateral en color naranja para coherencia cromática. */
+  border-left: 5px solid var(--color-naranja);
+}
+
+.summary-card__label {
+  /* Texto secundario en gris para la etiqueta de la tarjeta. */
+  color: var(--color-texto-suave);
+  /* Tamaño pequeño que no compite con el valor numérico. */
+  font-size: 0.85rem;
+  /* Grosor medio para facilitar la lectura. */
+  font-weight: 600;
+  /* Convertimos a mayúsculas para simular etiquetas. */
+  text-transform: uppercase;
+  /* Espaciado ligero entre letras. */
+  letter-spacing: 0.05em;
+}
+
+.summary-card__value {
+  /* Tamaño grande que resalta el número principal de la tarjeta. */
+  font-size: 2.25rem;
+  /* Peso alto para aumentar el contraste visual. */
+  font-weight: 700;
+  /* Utiliza el color de texto principal para máximo contraste. */
+  color: var(--color-texto);
+}
+
+.app__content .panel {
+  /* Borde para delimitar cada panel dentro de la sección principal. */
+  border: 1px solid var(--color-borde);
+  /* Bordes redondeados coherentes con el resto del diseño. */
+  border-radius: 1.25rem;
+  /* Relleno interno que separa el contenido de los bordes. */
+  padding: 1.75rem;
+  /* Fondo blanco que contrasta con el color general del body. */
+  background-color: var(--color-panel);
+  /* Organización vertical de los elementos internos del panel. */
+  display: flex;
+  flex-direction: column;
+  /* Separación entre componentes dentro del panel. */
+  gap: 1.5rem;
+}
+
+.panel__title {
+  /* Tamaño intermedio que destaca el encabezado del panel. */
+  font-size: 1.35rem;
+  /* Grosor alto para jerarquizar el título. */
+  font-weight: 700;
+  /* Color azul que conecta con la paleta principal. */
+  color: var(--color-azul);
+  /* Margen inferior pequeño para separar del siguiente contenido. */
+  margin-bottom: 0.25rem;
+}
+
+.panel__subtitle {
+  /* Margen inferior que proporciona aire alrededor del subtítulo. */
+  margin-bottom: 1rem;
+  /* Color gris suave para texto complementario. */
+  color: var(--color-texto-suave);
+}
+
+.estado {
+  /* Bordes redondeados para la alerta de mensajes. */
+  border-radius: 0.85rem;
+  /* Peso medio del texto para resaltar avisos sin ser demasiado pesado. */
+  font-weight: 500;
+  /* Eliminamos margen inferior para que encaje dentro del panel. */
+  margin-bottom: 0;
+  /* Espaciado interno que mejora la legibilidad del texto. */
+  padding: 0.85rem 1.1rem;
+}
+
+.tabla-controles {
+  /* Distribuye la alerta y el botón de actualización en un mismo renglón. */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* Permite que los elementos se reacomoden en dispositivos pequeños. */
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.tabla-controles .estado {
+  /* La alerta aprovecha el espacio disponible cuando es visible. */
+  flex: 1 1 260px;
+}
+
+.btn-actualizar-compras {
+  /* Mantiene el botón compacto sin sacrificar accesibilidad. */
+  border-radius: 999px;
+  padding: 0.6rem 1.4rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tabla-compras-wrapper {
+  /* Oculta el scroll vertical si no es necesario; se habilita dinámicamente. */
+  overflow-y: hidden;
+  /* Mantiene las esquinas redondeadas como el resto de paneles. */
+  border-radius: 1rem;
+  /* Delimita la tabla con un borde consistente y un fondo uniforme. */
+  border: 1px solid var(--color-borde);
+  background-color: var(--color-panel);
+  /* Transición suave cuando se recalcula la altura tras aplicar filtros. */
+  transition: max-height 0.25s ease, min-height 0.25s ease;
+}
+
+.tabla-compras {
+  /* Evita que las celdas compartan bordes, permitiendo estilos independientes. */
+  border-collapse: separate;
+  /* Sin separación adicional entre celdas para mantener estructura compacta. */
+  border-spacing: 0;
+  /* Ancho completo para aprovechar el espacio disponible. */
+  width: 100%;
+  /* Permitimos que la tabla calcule el tamaño de las columnas según su contenido. */
+  table-layout: auto;
+}
+
+.tabla-compras__cabecera th {
+  /* Tamaño pequeño que mantiene la cabecera compacta. */
+  font-size: 0.8rem;
+  /* Se aplica mayúsculas para diferenciar títulos de datos. */
+  text-transform: uppercase;
+  /* Ligero espaciado entre letras para mejorar legibilidad. */
+  letter-spacing: 0.05em;
+  /* Color tenue que no compita con los datos de la tabla. */
+  color: var(--color-texto-suave);
+  /* Línea inferior más gruesa que separa visualmente el encabezado. */
+  border-bottom: 2px solid var(--color-borde);
+  /* Evitamos que los títulos colapsen en varias líneas para mantener proporciones. */
+  white-space: nowrap;
+  /* Fondo sólido para garantizar legibilidad cuando el encabezado permanece fijo. */
+  background-color: var(--color-panel);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.tabla-compras tbody tr {
+  /* Permite señalar que las filas son interactuables. */
+  cursor: pointer;
+  /* Transición suave cuando cambia el color de fondo al pasar el cursor. */
+  transition: background-color 0.15s ease;
+}
+
+.tabla-compras tbody tr:hover {
+  /* Resaltado azul tenue al pasar el cursor sobre una fila. */
+  background-color: rgba(29, 78, 216, 0.08);
+}
+
+.tabla-compras tbody tr.table-active {
+  /* Color naranja translúcido que indica la fila seleccionada. */
+  background-color: rgba(249, 115, 22, 0.12);
+}
+
+.tabla-compras td,
+.tabla-compras th {
+  /* Relleno equilibrado para que el texto no quede pegado a los bordes. */
+  padding: 0.85rem 0.75rem;
+  /* Alineamos verticalmente al centro para celdas de varias líneas. */
+  vertical-align: middle;
+  /* Delegamos el ancho a su contenido para que cada columna se ajuste automáticamente. */
+  width: auto;
+}
+
+.tabla-compras tbody td {
+  /* Línea divisoria sutil que mejora la lectura cuando hay pocas filas. */
+  border-bottom: 1px solid rgba(212, 220, 244, 0.7);
+}
+
+.tabla-compras tbody tr:last-child td {
+  /* Evita que la última fila muestre una línea adicional innecesaria. */
+  border-bottom-color: transparent;
+}
+
+.tabla-compras__cabecera th.columna-indice,
+.tabla-compras tbody td.columna-indice {
+  /* Fondo neutro para el contador de coincidencias. */
+  background-color: rgba(15, 23, 42, 0.04);
+  /* El contador se alinea al centro para facilitar la lectura. */
+  text-align: center;
+  /* Ancho reducido que evita ocupar espacio de los datos relevantes. */
+  width: 3.5rem;
+  /* Peso de fuente ligeramente mayor para diferenciar la numeración. */
+  font-weight: 600;
+}
+
+.tabla-compras__cabecera th.columna-clave, .tabla-compras tbody td.columna-clave {
+  background-color: #c0feff;
+}
+
+/* Resalta los documentos siguientes con un rosa tenue. */
+.tabla-compras__cabecera th.columna-asociado,
+.tabla-compras tbody td.columna-asociado {
+  background-color: #ffe3f0;
+}
+
+.tabla-compras tbody tr.fila-sin-resultados td {
+  /* Elimina líneas divisorias cuando solo se muestra el mensaje de vacíos. */
+  border-bottom-color: transparent;
+  background: transparent;
+}
+
+.detalle-contenido {
+  /* Usamos grid para distribuir los bloques de detalle de forma uniforme. */
+  display: grid;
+  gap: 1rem;
+}
+
+.detalle-resaltado {
+  /* Fondo azul muy claro que resalta el panel respecto al resto. */
+  background-color: rgba(29, 78, 216, 0.06);
+  /* Esquinas suavizadas en consonancia con el resto del diseño. */
+  border-radius: 1rem;
+  /* Relleno generoso para facilitar la lectura de cada bloque. */
+  padding: 1.5rem;
+  /* Borde tenue que refuerza la separación visual. */
+  border: 1px solid rgba(29, 78, 216, 0.12);
+  /* Grid interno para alinear los pares etiqueta-valor. */
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.detalle-bloque {
+  /* Cada bloque se organiza en columna para mostrar etiqueta y valor. */
+  display: flex;
+  flex-direction: column;
+  /* Separación mínima entre etiqueta y valor. */
+  gap: 0.25rem;
+}
+
+.detalle-etiqueta {
+  /* Tamaño pequeño en mayúsculas para enfatizar que es una etiqueta. */
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  /* Se utiliza el gris suave para no competir con el valor. */
+  color: var(--color-texto-suave);
+}
+
+.detalle-valor {
+  /* Valor principal en tamaño mayor para resaltar información. */
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.detalle-resumen-serie {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  border: 1px dashed rgba(29, 78, 216, 0.25);
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(29, 78, 216, 0.08), rgba(29, 78, 216, 0.02));
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.detalle-resumen-serie__titulo {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-azul);
+  margin: 0;
+}
+
+.detalle-resumen-serie__descripcion {
+  margin: 0;
+  color: var(--color-texto-suave);
+  font-size: 0.95rem;
+}
+
+.detalle-resumen-serie__serie {
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.detalle-resumen-serie__seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.detalle-resumen-serie__seccion + .detalle-resumen-serie__seccion {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(29, 78, 216, 0.2);
+}
+
+.detalle-resumen-serie__subtitulo {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-texto-suave);
+}
+
+.detalle-resumen-serie__lista {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.detalle-resumen-serie__lista li {
+  font-size: 0.95rem;
+  color: var(--color-texto);
+}
+
+.detalle-resumen-serie__dato {
+  font-weight: 600;
+}
+
+@media (max-width: 991px) {
+  /* Ajustes de espaciado para tablets y laptops compactas. */
+  body {
+    padding: 1.5rem 1rem;
+  }
+
+  .app {
+    padding: 1.75rem;
+  }
+
+  .summary-card {
+    padding: 1.25rem;
+  }
+
+  .summary-card__value {
+    font-size: 1.9rem;
+  }
+}
+
+@media (max-width: 575px) {
+  /* Configuración pensada para pantallas móviles estrechas. */
+  .app {
+    padding: 1.25rem;
+  }
+
+  .app__header {
+    text-align: left;
+  }
+
+  .app__subtitle {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .summary-card {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .summary-card__value {
+    font-size: 1.6rem;
+  }
+}
