@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Campos libres de ventas</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="app__header">
+        <p class="app__badge">CLIB Ventas</p>
+        <h1 class="app__title">Editor de campos libres</h1>
+        <p class="app__subtitle">
+          Consulta, crea y actualiza la información complementaria de facturas, pedidos, cotizaciones y el resto de
+          documentos del módulo de ventas.
+        </p>
+      </header>
+
+      <section class="app__content">
+        <div class="panel">
+          <div>
+            <p class="small-label">Búsqueda</p>
+            <h2 class="panel__title">Filtrar documentos</h2>
+            <p class="panel__subtitle">Selecciona el tipo de documento y escribe una referencia para encontrarlo.</p>
+          </div>
+
+          <form id="formulario-busqueda" class="formulario-busqueda">
+            <label class="campo-formulario">
+              <span>Tipo de documento</span>
+              <select id="tipo-documento" class="control-busqueda" required></select>
+            </label>
+
+            <label class="campo-formulario">
+              <span>Empresa</span>
+              <input id="empresa" class="control-busqueda" type="number" min="1" max="99" value="1" required />
+            </label>
+
+            <label class="campo-formulario campo-formulario--texto">
+              <span>Buscar por clave o cliente</span>
+              <input id="termino" class="control-busqueda" type="text" placeholder="Ej. F000123" />
+            </label>
+
+            <button class="boton-primario" type="submit">Buscar</button>
+          </form>
+
+          <div class="tabla-documentos">
+            <table>
+              <thead>
+                <tr>
+                  <th>Documento</th>
+                  <th>Cliente</th>
+                  <th>Fecha</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="resultados"></tbody>
+            </table>
+            <p id="sin-resultados" class="mensaje-vacio" hidden>No se encontraron documentos con ese criterio.</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div>
+            <p class="small-label">Detalle</p>
+            <h2 class="panel__title">Documento seleccionado</h2>
+            <p class="panel__subtitle" id="descripcion-documento">
+              Selecciona un documento para mostrar su información y editar los campos libres.
+            </p>
+          </div>
+
+          <div class="resumen-documento" id="resumen-documento" hidden>
+            <div>
+              <p class="small-label">Clave</p>
+              <p id="detalle-clave" class="resumen-documento__dato"></p>
+            </div>
+            <div>
+              <p class="small-label">Cliente</p>
+              <p id="detalle-cliente" class="resumen-documento__dato"></p>
+            </div>
+            <div>
+              <p class="small-label">Fecha</p>
+              <p id="detalle-fecha" class="resumen-documento__dato"></p>
+            </div>
+          </div>
+
+          <div>
+            <p class="small-label">Campos libres</p>
+            <form id="formulario-campos" class="formulario-campos" hidden>
+              <div class="campos-libres" id="contenedor-campos"></div>
+              <div class="acciones-formulario">
+                <button type="submit" class="boton-primario">Guardar cambios</button>
+                <span id="estado-guardado" class="estado-guardado" role="status"></span>
+              </div>
+            </form>
+          </div>
+
+          <div class="panel-partidas">
+            <p class="small-label">Partidas</p>
+            <div class="tabla-documentos tabla-documentos--partidas">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Partida</th>
+                    <th>Artículo</th>
+                    <th>Unidad</th>
+                    <th>Cantidad</th>
+                    <th>Precio</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody id="partidas"></tbody>
+              </table>
+              <p id="sin-partidas" class="mensaje-vacio" hidden>El documento no tiene partidas registradas.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <template id="fila-resultado">
+      <tr>
+        <td data-columna="clave"></td>
+        <td data-columna="cliente"></td>
+        <td data-columna="fecha"></td>
+        <td><button type="button" class="boton-secundario">Editar</button></td>
+      </tr>
+    </template>
+
+    <template id="fila-partida">
+      <tr>
+        <td data-columna="partida"></td>
+        <td data-columna="articulo"></td>
+        <td data-columna="unidad"></td>
+        <td data-columna="cantidad"></td>
+        <td data-columna="precio"></td>
+        <td data-columna="total"></td>
+      </tr>
+    </template>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>
