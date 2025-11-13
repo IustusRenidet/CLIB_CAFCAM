@@ -13,15 +13,27 @@ const TIPOS_DOCUMENTO = {
   A: { clave: 'A', descripcion: 'Parcialidad / cobro', tabla: 'FACTA', tablaClib: 'FACTA_CLIB', tablaPartidas: 'PAR_FACTA' }
 };
 
-const MAPA_IDTABLA_PARTIDAS = {
-  F: ['PAR_FACT_CLIB', 'PAR_FACTF_CLIB'],
-  P: ['PAR_FACP_CLIB', 'PAR_FACTP_CLIB'],
-  C: ['PAR_FACC_CLIB', 'PAR_FACTC_CLIB'],
-  R: ['PAR_FACR_CLIB', 'PAR_FACTR_CLIB'],
-  D: ['PAR_FACD_CLIB', 'PAR_FACTD_CLIB'],
-  V: ['PAR_FACV_CLIB', 'PAR_FACTV_CLIB'],
-  A: ['PAR_FACA_CLIB', 'PAR_FACTA_CLIB']
+const MAPA_IDTABLAS_DOCUMENTO = {
+  F: ['FACTF_CLIB'],
+  P: ['FACTP_CLIB'],
+  C: ['FACTC_CLIB'],
+  R: ['FACTR_CLIB'],
+  D: ['FACTD_CLIB'],
+  V: ['FACTV_CLIB'],
+  A: ['FACTA_CLIB']
 };
+
+const MAPA_IDTABLAS_PARTIDAS = {
+  F: ['PAR_FACT_CLIB', 'PAR_FACTF_CLIB', 'PAR_FACF_CLIB'],
+  P: ['PAR_FACTP_CLIB', 'PAR_FACP_CLIB'],
+  C: ['PAR_FACTC_CLIB', 'PAR_FACC_CLIB'],
+  R: ['PAR_FACTR_CLIB', 'PAR_FACR_CLIB'],
+  D: ['PAR_FACTD_CLIB', 'PAR_FACD_CLIB'],
+  V: ['PAR_FACTV_CLIB', 'PAR_FACV_CLIB'],
+  A: ['PAR_FACTA_CLIB', 'PAR_FACA_CLIB']
+};
+
+const TODAS_IDTABLAS_PARTIDAS = crearSetIdTablasPartidas();
 
 const CAMPOS_LIBRES = Array.from({ length: 11 }, (_, indice) => `CAMPLIB${indice + 1}`);
 const PUERTO_SERVIDOR = Number(process.env.PORT || 3001);
@@ -311,11 +323,9 @@ async function obtenerEtiquetasCampos(db, tablaParametros, definicion) {
   }
 
   const mapaIdTablas = new Map();
-  const idDocumento = normalizarIdentificadorTabla(definicion.tablaClib);
-  if (idDocumento) {
-    mapaIdTablas.set(idDocumento, 'documento');
-  }
-
+  obtenerIdTablasParametrosDocumento(definicion).forEach((id) => {
+    mapaIdTablas.set(id, 'documento');
+  });
   obtenerIdTablasParametrosPartidas(definicion).forEach((id) => {
     mapaIdTablas.set(id, 'partidas');
   });
@@ -336,7 +346,7 @@ async function obtenerEtiquetasCampos(db, tablaParametros, definicion) {
       return;
     }
     const idTabla = normalizarIdentificadorTabla(registro.IDTABLA);
-    const origen = mapaIdTablas.get(idTabla) || 'documento';
+    const origen = mapaIdTablas.get(idTabla) || determinarOrigenIdTabla(idTabla);
     etiquetas[origen][campo] = formatearTexto(registro.ETIQUETA);
   });
 
@@ -389,6 +399,27 @@ function normalizarIdentificadorTabla(valor) {
   return valor.toString().trim().toUpperCase();
 }
 
+function obtenerIdTablasParametrosDocumento(definicion) {
+  if (!definicion) {
+    return [];
+  }
+  const candidatos = new Set();
+  const tablaDocumento = normalizarIdentificadorTabla(definicion.tablaClib);
+  if (tablaDocumento) {
+    candidatos.add(tablaDocumento);
+  }
+  const extra = MAPA_IDTABLAS_DOCUMENTO[definicion.clave];
+  if (extra) {
+    extra.forEach((id) => {
+      const normalizado = normalizarIdentificadorTabla(id);
+      if (normalizado) {
+        candidatos.add(normalizado);
+      }
+    });
+  }
+  return Array.from(candidatos);
+}
+
 function obtenerIdTablasParametrosPartidas(definicion) {
   if (!definicion) {
     return [];
@@ -399,7 +430,7 @@ function obtenerIdTablasParametrosPartidas(definicion) {
     candidatos.add(tablaBase);
     candidatos.add(`${tablaBase}_CLIB`);
   }
-  const genericos = MAPA_IDTABLA_PARTIDAS[definicion.clave];
+  const genericos = MAPA_IDTABLAS_PARTIDAS[definicion.clave];
   if (genericos) {
     genericos.forEach((id) => {
       const normalizado = normalizarIdentificadorTabla(id);
@@ -409,6 +440,37 @@ function obtenerIdTablasParametrosPartidas(definicion) {
     });
   }
   return Array.from(candidatos);
+}
+
+function determinarOrigenIdTabla(idTabla) {
+  const normalizado = normalizarIdentificadorTabla(idTabla);
+  if (!normalizado) {
+    return 'documento';
+  }
+  if (TODAS_IDTABLAS_PARTIDAS.has(normalizado) || normalizado.startsWith('PAR_')) {
+    return 'partidas';
+  }
+  return 'documento';
+}
+
+function crearSetIdTablasPartidas() {
+  const conjunto = new Set();
+  Object.values(TIPOS_DOCUMENTO).forEach((tipo) => {
+    const base = normalizarIdentificadorTabla(tipo.tablaPartidas);
+    if (base) {
+      conjunto.add(base);
+      conjunto.add(`${base}_CLIB`);
+    }
+  });
+  Object.values(MAPA_IDTABLAS_PARTIDAS).forEach((lista) => {
+    lista.forEach((id) => {
+      const normalizado = normalizarIdentificadorTabla(id);
+      if (normalizado) {
+        conjunto.add(normalizado);
+      }
+    });
+  });
+  return conjunto;
 }
 
 function obtenerRutaBaseDatos() {

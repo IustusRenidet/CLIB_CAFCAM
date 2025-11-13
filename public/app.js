@@ -17,6 +17,7 @@ const elementos = {
   tablaPartidas: document.getElementById('partidas'),
   mensajeSinPartidas: document.getElementById('sin-partidas'),
   panelDetalle: document.getElementById('panel-detalle'),
+  tabDetalle: document.querySelector('[data-tab-target="detalle"]'),
   botonVolver: document.getElementById('boton-volver'),
   filtroCampos: document.getElementById('filtro-campos'),
   toastContainer: document.getElementById('toast-container')
@@ -140,6 +141,11 @@ function pintarCamposLibres(campos = {}) {
   cambiosPendientes = false;
   actualizarEstadoGuardado('');
 
+  const grupos = {
+    documento: crearGrupoCampos('documento'),
+    partida: crearGrupoCampos('partida')
+  };
+
   for (let indice = 1; indice <= 11; indice += 1) {
     const clave = `CAMPLIB${indice}`;
     const etiqueta = obtenerEtiquetaCampo(clave, indice);
@@ -170,8 +176,63 @@ function pintarCamposLibres(campos = {}) {
     entrada.maxLength = 100;
     entrada.addEventListener('input', marcarCambiosPendientes);
     campo.appendChild(entrada);
+    const grupoDestino = grupos[origen] || grupos.documento;
+    grupoDestino.lista.appendChild(campo);
+    grupoDestino.total += 1;
+  }
 
-    elementos.contenedorCampos.appendChild(campo);
+  Object.values(grupos).forEach((grupo) => {
+    actualizarGrupoCampos(grupo);
+    elementos.contenedorCampos.appendChild(grupo.elemento);
+  });
+
+  prepararFiltroCampos(grupos);
+}
+
+function crearGrupoCampos(origen) {
+  const elemento = document.createElement('div');
+  elemento.className = 'campos-libres__grupo';
+  elemento.dataset.tablaOrigen = origen;
+
+  const titulo = document.createElement('div');
+  titulo.className = 'campos-libres__titulo';
+
+  const texto = document.createElement('span');
+  texto.textContent = origen === 'partida' ? 'Campos de partidas' : 'Campos del documento';
+  titulo.appendChild(texto);
+
+  const insignia = document.createElement('span');
+  insignia.className = `campo-libre__origen campo-libre__origen--${origen}`;
+  insignia.textContent = origen === 'partida' ? 'Partidas' : 'Documento';
+  titulo.appendChild(insignia);
+
+  const lista = document.createElement('div');
+  lista.className = 'campos-libres__lista';
+
+  const mensaje = document.createElement('p');
+  mensaje.className = 'campos-libres__mensaje';
+  mensaje.textContent =
+    origen === 'partida'
+      ? 'No hay campos libres configurados para las partidas.'
+      : 'No hay campos libres configurados para el documento.';
+  mensaje.hidden = true;
+
+  elemento.appendChild(titulo);
+  elemento.appendChild(lista);
+  elemento.appendChild(mensaje);
+
+  return { elemento, lista, mensaje, total: 0, origen };
+}
+
+function actualizarGrupoCampos(grupo) {
+  const hayCampos = grupo.total > 0;
+  grupo.elemento.dataset.totalCampos = String(grupo.total);
+  if (hayCampos) {
+    grupo.lista.hidden = false;
+    grupo.mensaje.hidden = true;
+  } else {
+    grupo.lista.hidden = true;
+    grupo.mensaje.hidden = false;
   }
 
   prepararFiltroCampos();
@@ -193,12 +254,23 @@ function pintarPartidas(partidas = []) {
   });
 }
 
-function prepararFiltroCampos() {
+function prepararFiltroCampos(grupos) {
   if (!elementos.filtroCampos) {
     return;
   }
-  const tieneDocumento = Object.keys(etiquetasCampos.documento || {}).length > 0;
-  elementos.filtroCampos.value = tieneDocumento ? 'documento' : 'todos';
+  let filtro = 'todos';
+  if (grupos) {
+    const tieneDocumento = grupos.documento.total > 0;
+    const tienePartida = grupos.partida.total > 0;
+    if (tieneDocumento && tienePartida) {
+      filtro = 'documento';
+    } else if (tieneDocumento) {
+      filtro = 'documento';
+    } else if (tienePartida) {
+      filtro = 'partida';
+    }
+  }
+  elementos.filtroCampos.value = filtro;
   aplicarFiltroCampos();
 }
 
@@ -207,10 +279,42 @@ function aplicarFiltroCampos() {
     return;
   }
   const filtro = elementos.filtroCampos.value;
-  elementos.contenedorCampos.querySelectorAll('.campo-libre').forEach((campo) => {
-    const origen = campo.dataset.origenCampo || 'documento';
-    const visible = filtro === 'todos' || filtro === origen;
-    campo.hidden = !visible;
+  elementos.contenedorCampos.querySelectorAll('.campos-libres__grupo').forEach((grupo) => {
+    const lista = grupo.querySelector('.campos-libres__lista');
+    const mensaje = grupo.querySelector('.campos-libres__mensaje');
+    const totalCampos = Number(grupo.dataset.totalCampos || '0');
+    if (!totalCampos) {
+      grupo.hidden = false;
+      if (lista) {
+        lista.hidden = true;
+      }
+      if (mensaje) {
+        mensaje.hidden = false;
+      }
+      return;
+    }
+
+    let visibles = 0;
+    grupo.querySelectorAll('.campo-libre').forEach((campo) => {
+      const origen = campo.dataset.origenCampo || 'documento';
+      const visible = filtro === 'todos' || filtro === origen;
+      campo.hidden = !visible;
+      if (visible) {
+        visibles += 1;
+      }
+    });
+
+    if (visibles > 0) {
+      grupo.hidden = false;
+      if (lista) {
+        lista.hidden = false;
+      }
+      if (mensaje) {
+        mensaje.hidden = true;
+      }
+    } else {
+      grupo.hidden = true;
+    }
   });
 }
 
@@ -220,6 +324,8 @@ function marcarCambiosPendientes() {
 }
 
 function activarVistaDetalle() {
+  habilitarTabDetalle(true);
+  seleccionarTab('detalle');
   if (elementos.app) {
     elementos.app.classList.add('app--detalle-activo');
   }
@@ -229,9 +335,54 @@ function activarVistaDetalle() {
 }
 
 function desactivarVistaDetalle() {
+  seleccionarTab('busqueda');
+  habilitarTabDetalle(false);
   if (elementos.app) {
     elementos.app.classList.remove('app--detalle-activo');
   }
+}
+
+function seleccionarTab(nombre) {
+  document.querySelectorAll('[data-tab-panel]').forEach((panel) => {
+    panel.hidden = panel.dataset.tabPanel !== nombre;
+  });
+  document.querySelectorAll('[data-tab-target]').forEach((boton) => {
+    const activo = boton.dataset.tabTarget === nombre;
+    boton.classList.toggle('tabs__tab--activo', activo);
+    boton.setAttribute('aria-selected', activo ? 'true' : 'false');
+  });
+}
+
+function habilitarTabDetalle(activo) {
+  if (!elementos.tabDetalle) {
+    return;
+  }
+  elementos.tabDetalle.disabled = !activo;
+  elementos.tabDetalle.setAttribute('aria-disabled', activo ? 'false' : 'true');
+}
+
+function manejarCambioTab(destino) {
+  if (destino === 'busqueda') {
+    volverAPanelBusqueda();
+    return;
+  }
+  if (destino === 'detalle') {
+    if (!documentoSeleccionado || (elementos.tabDetalle && elementos.tabDetalle.disabled)) {
+      return;
+    }
+    seleccionarTab('detalle');
+  }
+}
+
+function inicializarTabs() {
+  document.querySelectorAll('[data-tab-target]').forEach((boton) => {
+    boton.addEventListener('click', (evento) => {
+      const destino = evento.currentTarget.dataset.tabTarget;
+      manejarCambioTab(destino);
+    });
+  });
+  seleccionarTab('busqueda');
+  habilitarTabDetalle(false);
 }
 
 function volverAPanelBusqueda() {
@@ -428,6 +579,8 @@ if (elementos.botonVolver) {
 if (elementos.filtroCampos) {
   elementos.filtroCampos.addEventListener('change', aplicarFiltroCampos);
 }
+
+inicializarTabs();
 
 window.addEventListener('beforeunload', (evento) => {
   if (!cambiosPendientes) {
