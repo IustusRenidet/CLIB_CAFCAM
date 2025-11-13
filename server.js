@@ -42,6 +42,9 @@ const MAPA_IDTABLAS_PARTIDAS = {
 const TODAS_IDTABLAS_PARTIDAS = crearSetIdTablasPartidas();
 
 const CAMPOS_LIBRES = Array.from({ length: 11 }, (_, indice) => `CAMPLIB${indice + 1}`);
+const LONGITUD_MAXIMA_BUSQUEDA_GENERAL = 30;
+const LONGITUD_MAXIMA_CVE_DOC = 20;
+const LONGITUD_MAXIMA_CVE_CLIENTE = 10;
 const CONDICION_DOCUMENTO_VIGENTE = "COALESCE(STATUS, '') <> 'C'";
 const PUERTO_SERVIDOR = Number(process.env.PORT || 3001);
 const RUTA_BASE_DATOS = obtenerRutaBaseDatos();
@@ -74,7 +77,7 @@ aplicacion.get('/api/tipos-documento', (req, res) => {
 aplicacion.get('/api/documentos/buscar', asyncHandler(async (req, res) => {
   const definicion = obtenerDefinicionTipo(req.query.tipo);
   const empresa = normalizarEmpresa(req.query.empresa);
-  const termino = limitarLongitudBusqueda(formatearTexto(req.query.termino || ''));
+  const termino = limitarLongitudBusqueda(formatearTexto(req.query.termino || ''), LONGITUD_MAXIMA_BUSQUEDA_GENERAL);
   const tablaDocumentos = `${definicion.tabla}${empresa}`;
 
   const resultados = await conConexion(async (db) => {
@@ -87,9 +90,10 @@ aplicacion.get('/api/documentos/buscar', asyncHandler(async (req, res) => {
     condiciones.push(CONDICION_DOCUMENTO_VIGENTE);
     const parametros = [];
     if (termino) {
-      const comparador = `%${termino.toUpperCase()}%`;
+      const comparadorDocumento = crearComparadorBusqueda(termino, LONGITUD_MAXIMA_CVE_DOC);
+      const comparadorCliente = crearComparadorBusqueda(termino, LONGITUD_MAXIMA_CVE_CLIENTE);
       condiciones.push('(UPPER(CVE_DOC) LIKE ? OR UPPER(CVE_CLPV) LIKE ? )');
-      parametros.push(comparador, comparador);
+      parametros.push(comparadorDocumento, comparadorCliente);
     }
 
     const consulta = [
@@ -123,7 +127,7 @@ aplicacion.get('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
     const tablaDocumentos = `${definicion.tabla}${empresa}`;
     const tablaClib = `${definicion.tablaClib}${empresa}`;
     const tablaPartidas = `${definicion.tablaPartidas}${empresa}`;
-    const tablaPartidasClib = `${definicion.tablaPartidas}_CLIB${empresa}`;
+    const tablaPartidasClib = await obtenerTablaPartidasClib(db, definicion, empresa);
     const tablaParametros = `PARAM_CAMPOSLIBRES${empresa}`;
 
     const existeDocumentos = await verificarTabla(db, tablaDocumentos);
@@ -170,7 +174,7 @@ aplicacion.put('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
   await conConexion(async (db) => {
     const tablaDocumentos = `${definicion.tabla}${empresa}`;
     const tablaClib = `${definicion.tablaClib}${empresa}`;
-    const tablaPartidasClib = `${definicion.tablaPartidas}_CLIB${empresa}`;
+    const tablaPartidasClib = await obtenerTablaPartidasClib(db, definicion, empresa);
 
     const existeDocumentos = await verificarTabla(db, tablaDocumentos);
     const existeClib = await verificarTabla(db, tablaClib);
@@ -186,8 +190,7 @@ aplicacion.put('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
     await guardarCamposLibres(db, tablaClib, claveDocumento, camposNormalizados);
 
     if (partidasNormalizadas.length) {
-      const existePartidasClib = await verificarTabla(db, tablaPartidasClib);
-      if (!existePartidasClib) {
+      if (!tablaPartidasClib) {
         throw new AplicacionError('No existen campos libres configurados para las partidas en esta empresa.', 404);
       }
       await guardarCamposLibresPartidas(db, tablaPartidasClib, claveDocumento, partidasNormalizadas);
@@ -393,9 +396,9 @@ async function obtenerPartidas(db, tablaPartidas, tablaPartidasClib, claveDocume
     });
   }
 
-  const camposDisponiblesPartidas = await verificarTabla(db, tablaPartidasClib);
+  const camposDisponiblesPartidas = tablaPartidasClib ? await verificarTabla(db, tablaPartidasClib) : false;
   const mapaCampos = new Map();
-  if (camposDisponiblesPartidas && partidas.length) {
+  if (camposDisponiblesPartidas && partidas.length && tablaPartidasClib) {
     const consultaCampos = `SELECT NUM_PART, ${CAMPOS_LIBRES.join(', ')} FROM ${tablaPartidasClib} WHERE TRIM(UPPER(CLAVE_DOC)) = ?`;
     const registros = await ejecutarConsulta(db, consultaCampos, [claveDocumento.toUpperCase()]);
     registros.forEach((registro) => {
@@ -490,15 +493,23 @@ function crearMapaEtiquetas() {
   return { documento: {}, partidas: {} };
 }
 
-function limitarLongitudBusqueda(texto) {
+function limitarLongitudBusqueda(texto, longitudMaxima = LONGITUD_MAXIMA_BUSQUEDA_GENERAL) {
   if (!texto) {
     return '';
   }
   const cadena = texto.toString().trim();
-  if (cadena.length <= 30) {
+  if (cadena.length <= longitudMaxima) {
     return cadena;
   }
-  return cadena.slice(0, 30);
+  return cadena.slice(0, longitudMaxima);
+}
+
+function crearComparadorBusqueda(texto, longitudMaxima) {
+  const cadena = limitarLongitudBusqueda(texto, longitudMaxima);
+  if (!cadena) {
+    return '%%';
+  }
+  return `%${cadena.toUpperCase()}%`;
 }
 
 function normalizarIdentificadorTabla(valor) {
@@ -556,6 +567,36 @@ function determinarOrigenIdTabla(idTabla) {
     return 'partidas';
   }
   return 'documento';
+}
+
+async function obtenerTablaPartidasClib(db, definicion, empresa) {
+  if (!definicion || !empresa) {
+    return null;
+  }
+  const candidatos = new Set();
+  const base = normalizarIdentificadorTabla(definicion.tablaPartidas);
+  if (base) {
+    candidatos.add(`${base}_CLIB`);
+  }
+  const adicionales = MAPA_IDTABLAS_PARTIDAS[definicion.clave];
+  if (adicionales) {
+    adicionales.forEach((id) => {
+      const normalizado = normalizarIdentificadorTabla(id);
+      if (normalizado) {
+        candidatos.add(normalizado);
+      }
+    });
+  }
+
+  for (const candidato of candidatos) {
+    const nombreTabla = `${candidato}${empresa}`;
+    const existe = await verificarTabla(db, nombreTabla);
+    if (existe) {
+      return nombreTabla;
+    }
+  }
+
+  return null;
 }
 
 function crearSetIdTablasPartidas() {
