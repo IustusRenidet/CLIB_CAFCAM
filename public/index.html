@@ -61,8 +61,8 @@
             </label>
 
             <label class="campo-formulario campo-formulario--texto">
-              <span>Buscar por clave o cliente</span>
-              <input id="termino" class="control-busqueda" type="text" placeholder="Ej. F000123" />
+              <span>Buscar por clave</span>
+              <input id="termino" class="control-busqueda" type="text" placeholder="" />
             </label>
 
             <button class="boton-primario" type="submit">Buscar</button>
@@ -113,16 +113,6 @@
             <div>
               <p class="small-label">Campos libres</p>
               <form id="formulario-campos" class="formulario-campos" hidden>
-                <div class="filtros-campos">
-                  <label class="campo-formulario campo-formulario--compact">
-                    <span>Mostrar campos de</span>
-                    <select id="filtro-campos" class="control-busqueda control-busqueda--compact">
-                      <option value="documento">Documento</option>
-                      <option value="partida">Partidas</option>
-                      <option value="todos">Documento y partidas</option>
-                    </select>
-                  </label>
-                </div>
                 <div class="campos-libres" id="contenedor-campos"></div>
                 <div class="acciones-formulario">
                   <button type="submit" class="boton-primario">Guardar cambios</button>
