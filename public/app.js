@@ -505,6 +505,9 @@ function crearEstructuraEtiquetas(etiquetas) {
 }
 
 function obtenerOrigenCampo(clave) {
+  if (etiquetasCampos.documento && Object.prototype.hasOwnProperty.call(etiquetasCampos.documento, clave)) {
+    return 'documento';
+  }
   if (etiquetasCampos.partidas && Object.prototype.hasOwnProperty.call(etiquetasCampos.partidas, clave)) {
     return 'partida';
   }
