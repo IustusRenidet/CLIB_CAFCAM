@@ -129,7 +129,7 @@ aplicacion.get('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
     }
 
     const camposLibres = await obtenerCamposLibres(db, tablaClib, claveDocumento);
-    const etiquetas = await obtenerEtiquetasCampos(db, tablaParametros, definicion);
+    const etiquetas = await obtenerEtiquetasCampos(db, tablaParametros, definicion, empresa);
     const partidas = (await obtenerPartidas(db, tablaPartidas, claveDocumento)) || [];
 
     return { documento, camposLibres, etiquetas, partidas };
@@ -316,17 +316,17 @@ async function obtenerCamposLibres(db, tablaClib, claveDocumento) {
   return resultado;
 }
 
-async function obtenerEtiquetasCampos(db, tablaParametros, definicion) {
+async function obtenerEtiquetasCampos(db, tablaParametros, definicion, empresa) {
   const existeTablaParametros = await verificarTabla(db, tablaParametros);
   if (!existeTablaParametros) {
     return crearMapaEtiquetas();
   }
 
   const mapaIdTablas = new Map();
-  obtenerIdTablasParametrosDocumento(definicion).forEach((id) => {
+  obtenerIdTablasParametrosDocumento(definicion, empresa).forEach((id) => {
     mapaIdTablas.set(id, 'documento');
   });
-  obtenerIdTablasParametrosPartidas(definicion).forEach((id) => {
+  obtenerIdTablasParametrosPartidas(definicion, empresa).forEach((id) => {
     mapaIdTablas.set(id, 'partidas');
   });
 
@@ -399,47 +399,43 @@ function normalizarIdentificadorTabla(valor) {
   return valor.toString().trim().toUpperCase();
 }
 
-function obtenerIdTablasParametrosDocumento(definicion) {
+function obtenerIdTablasParametrosDocumento(definicion, empresa) {
   if (!definicion) {
     return [];
   }
   const candidatos = new Set();
-  const tablaDocumento = normalizarIdentificadorTabla(definicion.tablaClib);
-  if (tablaDocumento) {
-    candidatos.add(tablaDocumento);
-  }
+  agregarCandidatosIdTabla(candidatos, definicion.tablaClib, empresa);
   const extra = MAPA_IDTABLAS_DOCUMENTO[definicion.clave];
   if (extra) {
-    extra.forEach((id) => {
-      const normalizado = normalizarIdentificadorTabla(id);
-      if (normalizado) {
-        candidatos.add(normalizado);
-      }
-    });
+    extra.forEach((id) => agregarCandidatosIdTabla(candidatos, id, empresa));
   }
   return Array.from(candidatos);
 }
 
-function obtenerIdTablasParametrosPartidas(definicion) {
+function obtenerIdTablasParametrosPartidas(definicion, empresa) {
   if (!definicion) {
     return [];
   }
   const candidatos = new Set();
-  const tablaBase = normalizarIdentificadorTabla(definicion.tablaPartidas);
-  if (tablaBase) {
-    candidatos.add(tablaBase);
-    candidatos.add(`${tablaBase}_CLIB`);
-  }
+  agregarCandidatosIdTabla(candidatos, definicion.tablaPartidas, empresa);
+  const tablaClib = `${definicion.tablaPartidas}_CLIB`;
+  agregarCandidatosIdTabla(candidatos, tablaClib, empresa);
   const genericos = MAPA_IDTABLAS_PARTIDAS[definicion.clave];
   if (genericos) {
-    genericos.forEach((id) => {
-      const normalizado = normalizarIdentificadorTabla(id);
-      if (normalizado) {
-        candidatos.add(normalizado);
-      }
-    });
+    genericos.forEach((id) => agregarCandidatosIdTabla(candidatos, id, empresa));
   }
   return Array.from(candidatos);
+}
+
+function agregarCandidatosIdTabla(conjunto, idTabla, empresa) {
+  const normalizado = normalizarIdentificadorTabla(idTabla);
+  if (!normalizado) {
+    return;
+  }
+  conjunto.add(normalizado);
+  if (empresa) {
+    conjunto.add(`${normalizado}${empresa}`);
+  }
 }
 
 function determinarOrigenIdTabla(idTabla) {
