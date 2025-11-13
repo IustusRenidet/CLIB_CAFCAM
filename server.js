@@ -10,7 +10,9 @@ const TIPOS_DOCUMENTO = {
   R: { clave: 'R', descripcion: 'Remisión', tabla: 'FACTR', tablaClib: 'FACTR_CLIB', tablaPartidas: 'PAR_FACTR' },
   D: { clave: 'D', descripcion: 'Devolución', tabla: 'FACTD', tablaClib: 'FACTD_CLIB', tablaPartidas: 'PAR_FACTD' },
   V: { clave: 'V', descripcion: 'Nota de venta', tabla: 'FACTV', tablaClib: 'FACTV_CLIB', tablaPartidas: 'PAR_FACTV' },
-  A: { clave: 'A', descripcion: 'Parcialidad / cobro', tabla: 'FACTA', tablaClib: 'FACTA_CLIB', tablaPartidas: 'PAR_FACTA' }
+  A: { clave: 'A', descripcion: 'Parcialidad / cobro', tabla: 'FACTA', tablaClib: 'FACTA_CLIB', tablaPartidas: 'PAR_FACTA' },
+  E: { clave: 'E', descripcion: 'Nota de crédito', tabla: 'FACTE', tablaClib: 'FACTE_CLIB', tablaPartidas: 'PAR_FACTE' },
+  G: { clave: 'G', descripcion: 'Comprobante de pago', tabla: 'FACTG', tablaClib: 'FACTG_CLIB', tablaPartidas: 'PAR_FACTG' }
 };
 
 const MAPA_IDTABLAS_DOCUMENTO = {
@@ -20,7 +22,9 @@ const MAPA_IDTABLAS_DOCUMENTO = {
   R: ['FACTR_CLIB'],
   D: ['FACTD_CLIB'],
   V: ['FACTV_CLIB'],
-  A: ['FACTA_CLIB']
+  A: ['FACTA_CLIB'],
+  E: ['FACTE_CLIB'],
+  G: ['FACTG_CLIB']
 };
 
 const MAPA_IDTABLAS_PARTIDAS = {
@@ -30,12 +34,15 @@ const MAPA_IDTABLAS_PARTIDAS = {
   R: ['PAR_FACTR_CLIB', 'PAR_FACR_CLIB'],
   D: ['PAR_FACTD_CLIB', 'PAR_FACD_CLIB'],
   V: ['PAR_FACTV_CLIB', 'PAR_FACV_CLIB'],
-  A: ['PAR_FACTA_CLIB', 'PAR_FACA_CLIB']
+  A: ['PAR_FACTA_CLIB', 'PAR_FACA_CLIB'],
+  E: ['PAR_FACTE_CLIB', 'PAR_FACE_CLIB'],
+  G: ['PAR_FACTG_CLIB', 'PAR_FACG_CLIB']
 };
 
 const TODAS_IDTABLAS_PARTIDAS = crearSetIdTablasPartidas();
 
 const CAMPOS_LIBRES = Array.from({ length: 11 }, (_, indice) => `CAMPLIB${indice + 1}`);
+const CONDICION_DOCUMENTO_VIGENTE = "COALESCE(STATUS, '') <> 'C'";
 const PUERTO_SERVIDOR = Number(process.env.PORT || 3001);
 const RUTA_BASE_DATOS = obtenerRutaBaseDatos();
 const CONFIGURACION_FIREBIRD = {
@@ -77,6 +84,7 @@ aplicacion.get('/api/documentos/buscar', asyncHandler(async (req, res) => {
     }
 
     const condiciones = [];
+    condiciones.push(CONDICION_DOCUMENTO_VIGENTE);
     const parametros = [];
     if (termino) {
       const comparador = `%${termino.toUpperCase()}%`;
@@ -305,7 +313,8 @@ async function verificarTabla(db, nombreTabla) {
 }
 
 async function obtenerDocumento(db, tablaDocumentos, claveDocumento) {
-  const consulta = `SELECT FIRST 1 CVE_DOC, CVE_CLPV, FECHA_DOC FROM ${tablaDocumentos} WHERE TRIM(UPPER(CVE_DOC)) = ?`;
+  const consulta =
+    `SELECT FIRST 1 CVE_DOC, CVE_CLPV, FECHA_DOC FROM ${tablaDocumentos} WHERE TRIM(UPPER(CVE_DOC)) = ? AND ${CONDICION_DOCUMENTO_VIGENTE}`;
   const registros = await ejecutarConsulta(db, consulta, [claveDocumento.toUpperCase()]);
   if (!registros.length) {
     return null;

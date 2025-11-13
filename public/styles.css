@@ -19,6 +19,12 @@
   --color-borde: #d4dcf4;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   /* Establece un fondo suave y centra el contenido principal. */
   background-color: var(--color-fondo);
@@ -35,7 +41,7 @@ body {
   justify-content: center;
   align-items: flex-start;
   /* Relleno general para evitar que el contenido toque los bordes. */
-  padding: 2rem 1rem;
+  padding: clamp(1rem, 3vw, 2.5rem) 1rem;
 }
 
 .app {
@@ -51,6 +57,8 @@ body {
   width: 100%;
   /* Limitamos el ancho máximo para mantener lineas de lectura cómodas. */
   max-width: 1400px;
+  margin: 0 auto;
+  overflow: hidden;
 }
 
 .app__content {
@@ -223,6 +231,8 @@ body {
   flex-direction: column;
   /* Separación entre componentes dentro del panel. */
   gap: 1.5rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .panel--detalle {
@@ -583,6 +593,7 @@ body {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 1rem;
   align-items: end;
+  width: 100%;
 }
 
 .campo-formulario {
@@ -633,12 +644,15 @@ body {
 .tabla-documentos {
   border: 1px solid var(--color-borde);
   border-radius: 1rem;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  width: 100%;
 }
 
 .tabla-documentos table {
   border-collapse: collapse;
   width: 100%;
+  min-width: 620px;
   font-size: 0.95rem;
 }
 
@@ -690,6 +704,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  width: 100%;
 }
 
 .filtros-campos {
@@ -767,9 +782,20 @@ body {
 }
 
 .panel-partidas {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+}
+
+.panel-partidas > * {
+  min-width: 0;
+}
+
+@media (min-width: 1100px) {
+  .panel-partidas {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    align-items: flex-start;
+  }
 }
 
 .tabla-documentos--partidas table {
@@ -788,6 +814,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .campos-partidas__lista {
@@ -804,14 +832,32 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  overflow: hidden;
 }
 
 .partida-campos__encabezado {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  align-items: center;
   justify-content: space-between;
-  align-items: baseline;
+  gap: 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.75rem;
+  background-color: rgba(255, 255, 255, 0.75);
+  padding: 0.65rem 0.9rem;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.partida-campos__encabezado:hover {
+  background-color: rgba(29, 78, 216, 0.08);
+}
+
+.partida-campos__encabezado:focus-visible {
+  outline: 2px solid var(--color-azul);
+  outline-offset: 2px;
 }
 
 .partida-campos__titulo {
@@ -820,15 +866,29 @@ body {
   color: var(--color-texto);
 }
 
-.partida-campos__subtitulo {
-  font-size: 0.85rem;
+.partida-campos__icono {
+  font-size: 1.1rem;
   color: var(--color-texto-suave);
+  transition: transform 0.2s ease;
 }
 
 .partida-campos__campos {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 0.75rem;
+}
+
+.partida-campos--colapsada .partida-campos__campos {
+  display: none;
+}
+
+.partida-campos--expandida .partida-campos__encabezado {
+  border-color: rgba(29, 78, 216, 0.35);
+  background-color: rgba(29, 78, 216, 0.08);
+}
+
+.partida-campos--expandida .partida-campos__icono {
+  transform: rotate(90deg);
 }
 
 .campo-libre--partida input {

@@ -251,26 +251,20 @@ function pintarCamposLibresPartidas(partidas = []) {
   }
 
   const fragmento = document.createDocumentFragment();
+  let contadorSecciones = 0;
   partidas.forEach((partida) => {
+    contadorSecciones += 1;
     const contenedor = document.createElement('section');
-    contenedor.className = 'partida-campos';
+    contenedor.className = 'partida-campos partida-campos--colapsada';
     contenedor.dataset.numeroPartida = partida.numero;
-
-    const encabezado = document.createElement('div');
-    encabezado.className = 'partida-campos__encabezado';
-    const articulo = partida.articulo || 'Sin artículo';
-    const titulo = document.createElement('p');
-    titulo.className = 'partida-campos__titulo';
-    titulo.textContent = `Partida ${partida.numero} · ${articulo}`;
-    const subtitulo = document.createElement('p');
-    subtitulo.className = 'partida-campos__subtitulo';
-    const cantidad = `${formatoCantidad(partida.cantidad)} ${partida.unidad || ''}`.trim();
-    subtitulo.textContent = cantidad || '—';
-    encabezado.appendChild(titulo);
-    encabezado.appendChild(subtitulo);
 
     const lista = document.createElement('div');
     lista.className = 'partida-campos__campos';
+    lista.hidden = true;
+    const idLista = `campos-partida-${contadorSecciones}`;
+    lista.id = idLista;
+
+    const encabezado = crearEncabezadoPartida(contenedor, partida, idLista);
     CAMPOS_LIBRES.forEach((clave, indice) => {
       const etiqueta = obtenerEtiquetaCampoPartida(clave, indice + 1);
       const campo = document.createElement('label');
@@ -301,6 +295,51 @@ function pintarCamposLibresPartidas(partidas = []) {
   elementos.camposPartidas.hidden = false;
   elementos.listaCamposPartidas.hidden = false;
   elementos.mensajeCamposPartidas.hidden = true;
+}
+
+function crearEncabezadoPartida(contenedor, partida, idLista) {
+  const encabezado = document.createElement('button');
+  encabezado.type = 'button';
+  encabezado.className = 'partida-campos__encabezado';
+  encabezado.setAttribute('aria-expanded', 'false');
+  if (idLista) {
+    encabezado.setAttribute('aria-controls', idLista);
+  }
+  const articulo = partida.articulo || 'Sin artículo';
+  const titulo = document.createElement('span');
+  titulo.className = 'partida-campos__titulo';
+  titulo.textContent = `Partida ${partida.numero} · ${articulo}`;
+  const icono = document.createElement('span');
+  icono.className = 'partida-campos__icono';
+  icono.setAttribute('aria-hidden', 'true');
+  icono.textContent = '›';
+  encabezado.appendChild(titulo);
+  encabezado.appendChild(icono);
+  encabezado.addEventListener('click', () => alternarPartidaCampos(contenedor, encabezado));
+  return encabezado;
+}
+
+function alternarPartidaCampos(contenedor, encabezado) {
+  if (!contenedor) {
+    return;
+  }
+  const lista = contenedor.querySelector('.partida-campos__campos');
+  if (!lista) {
+    return;
+  }
+  const estaColapsada = contenedor.classList.contains('partida-campos--colapsada');
+  if (estaColapsada) {
+    contenedor.classList.remove('partida-campos--colapsada');
+    contenedor.classList.add('partida-campos--expandida');
+  } else {
+    contenedor.classList.add('partida-campos--colapsada');
+    contenedor.classList.remove('partida-campos--expandida');
+  }
+  const expandida = contenedor.classList.contains('partida-campos--expandida');
+  lista.hidden = !expandida;
+  if (encabezado) {
+    encabezado.setAttribute('aria-expanded', expandida ? 'true' : 'false');
+  }
 }
 
 function marcarCambiosPendientes() {
