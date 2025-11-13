@@ -13,6 +13,28 @@ const TIPOS_DOCUMENTO = {
   A: { clave: 'A', descripcion: 'Parcialidad / cobro', tabla: 'FACTA', tablaClib: 'FACTA_CLIB', tablaPartidas: 'PAR_FACTA' }
 };
 
+const MAPA_IDTABLAS_DOCUMENTO = {
+  F: ['FACTF_CLIB'],
+  P: ['FACTP_CLIB'],
+  C: ['FACTC_CLIB'],
+  R: ['FACTR_CLIB'],
+  D: ['FACTD_CLIB'],
+  V: ['FACTV_CLIB'],
+  A: ['FACTA_CLIB']
+};
+
+const MAPA_IDTABLAS_PARTIDAS = {
+  F: ['PAR_FACT_CLIB', 'PAR_FACTF_CLIB', 'PAR_FACF_CLIB'],
+  P: ['PAR_FACTP_CLIB', 'PAR_FACP_CLIB'],
+  C: ['PAR_FACTC_CLIB', 'PAR_FACC_CLIB'],
+  R: ['PAR_FACTR_CLIB', 'PAR_FACR_CLIB'],
+  D: ['PAR_FACTD_CLIB', 'PAR_FACD_CLIB'],
+  V: ['PAR_FACTV_CLIB', 'PAR_FACV_CLIB'],
+  A: ['PAR_FACTA_CLIB', 'PAR_FACA_CLIB']
+};
+
+const TODAS_IDTABLAS_PARTIDAS = crearSetIdTablasPartidas();
+
 const CAMPOS_LIBRES = Array.from({ length: 11 }, (_, indice) => `CAMPLIB${indice + 1}`);
 const PUERTO_SERVIDOR = Number(process.env.PORT || 3001);
 const RUTA_BASE_DATOS = obtenerRutaBaseDatos();
@@ -107,7 +129,7 @@ aplicacion.get('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
     }
 
     const camposLibres = await obtenerCamposLibres(db, tablaClib, claveDocumento);
-    const etiquetas = (await obtenerEtiquetasCampos(db, tablaParametros, definicion.tablaClib)) || {};
+    const etiquetas = await obtenerEtiquetasCampos(db, tablaParametros, definicion);
     const partidas = (await obtenerPartidas(db, tablaPartidas, claveDocumento)) || [];
 
     return { documento, camposLibres, etiquetas, partidas };
@@ -294,20 +316,40 @@ async function obtenerCamposLibres(db, tablaClib, claveDocumento) {
   return resultado;
 }
 
-async function obtenerEtiquetasCampos(db, tablaParametros, idTabla) {
+async function obtenerEtiquetasCampos(db, tablaParametros, definicion) {
   const existeTablaParametros = await verificarTabla(db, tablaParametros);
   if (!existeTablaParametros) {
-    return null;
+    return crearMapaEtiquetas();
   }
-  const consulta = `SELECT CAMPO, ETIQUETA FROM ${tablaParametros} WHERE TRIM(UPPER(IDTABLA)) = ?`;
-  const registros = await ejecutarConsulta(db, consulta, [idTabla.toUpperCase()]);
-  const etiquetas = {};
+
+  const mapaIdTablas = new Map();
+  obtenerIdTablasParametrosDocumento(definicion).forEach((id) => {
+    mapaIdTablas.set(id, 'documento');
+  });
+  obtenerIdTablasParametrosPartidas(definicion).forEach((id) => {
+    mapaIdTablas.set(id, 'partidas');
+  });
+
+  if (!mapaIdTablas.size) {
+    return crearMapaEtiquetas();
+  }
+
+  const ids = Array.from(mapaIdTablas.keys());
+  const marcadores = ids.map(() => '?').join(', ');
+  const consulta = `SELECT CAMPO, ETIQUETA, IDTABLA FROM ${tablaParametros} WHERE TRIM(UPPER(IDTABLA)) IN (${marcadores})`;
+  const registros = await ejecutarConsulta(db, consulta, ids);
+  const etiquetas = crearMapaEtiquetas();
+
   registros.forEach((registro) => {
     const campo = formatearTexto(registro.CAMPO).toUpperCase();
-    if (CAMPOS_LIBRES.includes(campo)) {
-      etiquetas[campo] = formatearTexto(registro.ETIQUETA);
+    if (!CAMPOS_LIBRES.includes(campo)) {
+      return;
     }
+    const idTabla = normalizarIdentificadorTabla(registro.IDTABLA);
+    const origen = mapaIdTablas.get(idTabla) || determinarOrigenIdTabla(idTabla);
+    etiquetas[origen][campo] = formatearTexto(registro.ETIQUETA);
   });
+
   return etiquetas;
 }
 
@@ -344,6 +386,91 @@ async function guardarCamposLibres(db, tablaClib, claveDocumento, campos) {
   const marcadores = columnas.map(() => '?').join(', ');
   const consultaInsercion = `INSERT INTO ${tablaClib} (${columnas.join(', ')}) VALUES (${marcadores})`;
   await ejecutarConsulta(db, consultaInsercion, [claveDocumento.toUpperCase(), ...valores]);
+}
+
+function crearMapaEtiquetas() {
+  return { documento: {}, partidas: {} };
+}
+
+function normalizarIdentificadorTabla(valor) {
+  if (!valor) {
+    return '';
+  }
+  return valor.toString().trim().toUpperCase();
+}
+
+function obtenerIdTablasParametrosDocumento(definicion) {
+  if (!definicion) {
+    return [];
+  }
+  const candidatos = new Set();
+  const tablaDocumento = normalizarIdentificadorTabla(definicion.tablaClib);
+  if (tablaDocumento) {
+    candidatos.add(tablaDocumento);
+  }
+  const extra = MAPA_IDTABLAS_DOCUMENTO[definicion.clave];
+  if (extra) {
+    extra.forEach((id) => {
+      const normalizado = normalizarIdentificadorTabla(id);
+      if (normalizado) {
+        candidatos.add(normalizado);
+      }
+    });
+  }
+  return Array.from(candidatos);
+}
+
+function obtenerIdTablasParametrosPartidas(definicion) {
+  if (!definicion) {
+    return [];
+  }
+  const candidatos = new Set();
+  const tablaBase = normalizarIdentificadorTabla(definicion.tablaPartidas);
+  if (tablaBase) {
+    candidatos.add(tablaBase);
+    candidatos.add(`${tablaBase}_CLIB`);
+  }
+  const genericos = MAPA_IDTABLAS_PARTIDAS[definicion.clave];
+  if (genericos) {
+    genericos.forEach((id) => {
+      const normalizado = normalizarIdentificadorTabla(id);
+      if (normalizado) {
+        candidatos.add(normalizado);
+      }
+    });
+  }
+  return Array.from(candidatos);
+}
+
+function determinarOrigenIdTabla(idTabla) {
+  const normalizado = normalizarIdentificadorTabla(idTabla);
+  if (!normalizado) {
+    return 'documento';
+  }
+  if (TODAS_IDTABLAS_PARTIDAS.has(normalizado) || normalizado.startsWith('PAR_')) {
+    return 'partidas';
+  }
+  return 'documento';
+}
+
+function crearSetIdTablasPartidas() {
+  const conjunto = new Set();
+  Object.values(TIPOS_DOCUMENTO).forEach((tipo) => {
+    const base = normalizarIdentificadorTabla(tipo.tablaPartidas);
+    if (base) {
+      conjunto.add(base);
+      conjunto.add(`${base}_CLIB`);
+    }
+  });
+  Object.values(MAPA_IDTABLAS_PARTIDAS).forEach((lista) => {
+    lista.forEach((id) => {
+      const normalizado = normalizarIdentificadorTabla(id);
+      if (normalizado) {
+        conjunto.add(normalizado);
+      }
+    });
+  });
+  return conjunto;
 }
 
 function obtenerRutaBaseDatos() {

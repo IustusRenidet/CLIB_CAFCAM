@@ -8,14 +8,42 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main class="app">
+    <main class="app" id="app">
       <header class="app__header">
         <p class="app__badge">Iconet</p>
         <h1 class="app__title">Campos libres en Ventas</h1>
       </header>
 
       <section class="app__content">
-        <div class="panel">
+        <div class="tabs" role="tablist" aria-label="Secciones de la aplicación">
+          <button
+            type="button"
+            class="tabs__tab tabs__tab--activo"
+            data-tab-target="busqueda"
+            role="tab"
+            id="tab-busqueda"
+            aria-selected="true"
+            aria-controls="panel-busqueda"
+          >
+            Búsqueda
+          </button>
+          <button
+            type="button"
+            class="tabs__tab"
+            data-tab-target="detalle"
+            role="tab"
+            id="tab-detalle"
+            aria-selected="false"
+            aria-controls="panel-detalle-tab"
+            aria-disabled="true"
+            disabled
+          >
+            Detalle del documento
+          </button>
+        </div>
+
+        <div class="tab-panel" id="panel-busqueda" data-tab-panel="busqueda">
+          <div class="panel panel--busqueda">
           <div>
             <p class="small-label">Búsqueda</p>
             <h2 class="panel__title">Filtrar documentos</h2>
@@ -54,60 +82,76 @@
             </table>
             <p id="sin-resultados" class="mensaje-vacio" hidden>No se encontraron documentos con ese criterio.</p>
           </div>
+          </div>
         </div>
 
-        <div class="panel">
-          <div>
-            <p class="small-label">Detalle</p>
-            <h2 class="panel__title">Documento seleccionado</h2>
-            <p class="panel__subtitle" id="descripcion-documento">
-              Selecciona un documento para mostrar su información y editar los campos libres.
-            </p>
-          </div>
+        <div class="tab-panel" id="panel-detalle-tab" data-tab-panel="detalle" hidden>
+          <div class="panel panel--detalle" id="panel-detalle">
+            <button type="button" id="boton-volver" class="panel-detalle__volver">
+              ← Volver a la búsqueda
+            </button>
+            <div>
+              <p class="small-label">Detalle</p>
+              <h2 class="panel__title">Documento seleccionado</h2>
+              <p class="panel__subtitle" id="descripcion-documento">
+                Selecciona un documento para mostrar su información y editar los campos libres.
+              </p>
+            </div>
 
-          <div class="resumen-documento" id="resumen-documento" hidden>
-            <div>
-              <p class="small-label">Clave</p>
-              <p id="detalle-clave" class="resumen-documento__dato"></p>
-            </div>
-            <div>
-              <p class="small-label">Cliente</p>
-              <p id="detalle-cliente" class="resumen-documento__dato"></p>
-            </div>
-            <div>
-              <p class="small-label">Fecha</p>
-              <p id="detalle-fecha" class="resumen-documento__dato"></p>
-            </div>
-          </div>
-
-          <div>
-            <p class="small-label">Campos libres</p>
-            <form id="formulario-campos" class="formulario-campos" hidden>
-              <div class="campos-libres" id="contenedor-campos"></div>
-              <div class="acciones-formulario">
-                <button type="submit" class="boton-primario">Guardar cambios</button>
-                <span id="estado-guardado" class="estado-guardado" role="status"></span>
+            <div class="resumen-documento" id="resumen-documento" hidden>
+              <div>
+                <p class="small-label">Clave</p>
+                <p id="detalle-clave" class="resumen-documento__dato"></p>
               </div>
-            </form>
-          </div>
+              <div>
+                <p class="small-label">Cliente</p>
+                <p id="detalle-cliente" class="resumen-documento__dato"></p>
+              </div>
+              <div>
+                <p class="small-label">Fecha</p>
+                <p id="detalle-fecha" class="resumen-documento__dato"></p>
+              </div>
+            </div>
 
-          <div class="panel-partidas">
-            <p class="small-label">Partidas</p>
-            <div class="tabla-documentos tabla-documentos--partidas">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Partida</th>
-                    <th>Artículo</th>
-                    <th>Unidad</th>
-                    <th>Cantidad</th>
-                    <th>Precio</th>
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody id="partidas"></tbody>
-              </table>
-              <p id="sin-partidas" class="mensaje-vacio" hidden>El documento no tiene partidas registradas.</p>
+            <div>
+              <p class="small-label">Campos libres</p>
+              <form id="formulario-campos" class="formulario-campos" hidden>
+                <div class="filtros-campos">
+                  <label class="campo-formulario campo-formulario--compact">
+                    <span>Mostrar campos de</span>
+                    <select id="filtro-campos" class="control-busqueda control-busqueda--compact">
+                      <option value="documento">Documento</option>
+                      <option value="partida">Partidas</option>
+                      <option value="todos">Documento y partidas</option>
+                    </select>
+                  </label>
+                </div>
+                <div class="campos-libres" id="contenedor-campos"></div>
+                <div class="acciones-formulario">
+                  <button type="submit" class="boton-primario">Guardar cambios</button>
+                  <span id="estado-guardado" class="estado-guardado" role="status"></span>
+                </div>
+              </form>
+            </div>
+
+            <div class="panel-partidas">
+              <p class="small-label">Partidas</p>
+              <div class="tabla-documentos tabla-documentos--partidas">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Partida</th>
+                      <th>Artículo</th>
+                      <th>Unidad</th>
+                      <th>Cantidad</th>
+                      <th>Precio</th>
+                      <th>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody id="partidas"></tbody>
+                </table>
+                <p id="sin-partidas" class="mensaje-vacio" hidden>El documento no tiene partidas registradas.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -133,6 +177,8 @@
         <td data-columna="total"></td>
       </tr>
     </template>
+
+    <div id="toast-container" class="toast-container" aria-live="assertive" aria-atomic="true"></div>
 
     <script src="/app.js" type="module"></script>
   </body>
