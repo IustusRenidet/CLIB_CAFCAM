@@ -3,7 +3,6 @@ const elementos = {
   formularioBusqueda: document.getElementById('formulario-busqueda'),
   formularioCampos: document.getElementById('formulario-campos'),
   tipoDocumento: document.getElementById('tipo-documento'),
-  empresa: document.getElementById('empresa'),
   termino: document.getElementById('termino'),
   tablaResultados: document.getElementById('resultados'),
   mensajeSinResultados: document.getElementById('sin-resultados'),
@@ -16,12 +15,18 @@ const elementos = {
   estadoGuardado: document.getElementById('estado-guardado'),
   tablaPartidas: document.getElementById('partidas'),
   mensajeSinPartidas: document.getElementById('sin-partidas'),
+  camposPartidas: document.getElementById('campos-partidas'),
+  listaCamposPartidas: document.getElementById('lista-campos-partidas'),
+  mensajeCamposPartidas: document.getElementById('sin-campos-partidas'),
   panelDetalle: document.getElementById('panel-detalle'),
   tabDetalle: document.querySelector('[data-tab-target="detalle"]'),
   botonVolver: document.getElementById('boton-volver'),
   filtroCampos: document.getElementById('filtro-campos'),
   toastContainer: document.getElementById('toast-container')
 };
+
+const CAMPOS_LIBRES = Array.from({ length: 11 }, (_, indice) => `CAMPLIB${indice + 1}`);
+const EMPRESA_FIJA = '1';
 
 const plantillas = {
   resultado: document.getElementById('fila-resultado'),
@@ -32,6 +37,8 @@ let documentoSeleccionado = null;
 let etiquetasCampos = crearEstructuraEtiquetas();
 let cambiosPendientes = false;
 let temporizadorGuardado = null;
+let temporizadorBusqueda = null;
+let camposPartidasDisponibles = false;
 
 async function cargarTiposDocumento() {
   const respuesta = await fetch('/api/tipos-documento');
@@ -49,16 +56,28 @@ async function cargarTiposDocumento() {
   });
 }
 
-async function buscarDocumentos(evento) {
-  evento.preventDefault();
+async function buscarDocumentos() {
+  if (!elementos.tipoDocumento) {
+    return;
+  }
+  if (!confirmarSalidaDeCambios()) {
+    return;
+  }
+  cambiosPendientes = false;
   limpiarResultados();
   documentoSeleccionado = null;
   ocultarFormularioCampos();
+  desactivarVistaDetalle();
+
+  const tipo = elementos.tipoDocumento.value;
+  if (!tipo) {
+    return;
+  }
 
   const parametros = new URLSearchParams({
-    tipo: elementos.tipoDocumento.value,
-    empresa: elementos.empresa.value,
-    termino: elementos.termino.value
+    tipo,
+    empresa: EMPRESA_FIJA,
+    termino: elementos.termino ? elementos.termino.value : ''
   });
 
   try {
@@ -94,6 +113,13 @@ function limpiarResultados() {
   elementos.mensajeSinResultados.hidden = true;
 }
 
+function programarBusqueda() {
+  clearTimeout(temporizadorBusqueda);
+  temporizadorBusqueda = setTimeout(() => {
+    buscarDocumentos();
+  }, 350);
+}
+
 function seleccionarDocumento(registro) {
   if (!registro) {
     return;
@@ -121,6 +147,7 @@ async function cargarDocumento(registro) {
     };
 
     etiquetasCampos = crearEstructuraEtiquetas(datos.etiquetas);
+    camposPartidasDisponibles = Boolean(datos.camposPartidasDisponibles);
     elementos.descripcionDocumento.textContent = `${datos.documento.descripcion}.`;
     elementos.resumenDocumento.hidden = false;
     elementos.detalleClave.textContent = datos.documento.cveDoc;
@@ -146,9 +173,8 @@ function pintarCamposLibres(campos = {}) {
     partida: crearGrupoCampos('partida')
   };
 
-  for (let indice = 1; indice <= 11; indice += 1) {
-    const clave = `CAMPLIB${indice}`;
-    const etiqueta = obtenerEtiquetaCampo(clave, indice);
+  CAMPOS_LIBRES.forEach((clave, indice) => {
+    const etiqueta = obtenerEtiquetaCampo(clave, indice + 1);
     const origen = obtenerOrigenCampo(clave);
 
     const campo = document.createElement('label');
@@ -162,11 +188,6 @@ function pintarCamposLibres(campos = {}) {
     span.textContent = etiqueta;
     encabezado.appendChild(span);
 
-    const insignia = document.createElement('span');
-    insignia.className = `campo-libre__origen campo-libre__origen--${origen}`;
-    insignia.textContent = origen === 'partida' ? 'Partidas' : 'Documento';
-    encabezado.appendChild(insignia);
-
     campo.appendChild(encabezado);
 
     const entrada = document.createElement('input');
@@ -179,7 +200,7 @@ function pintarCamposLibres(campos = {}) {
     const grupoDestino = grupos[origen] || grupos.documento;
     grupoDestino.lista.appendChild(campo);
     grupoDestino.total += 1;
-  }
+  });
 
   Object.values(grupos).forEach((grupo) => {
     actualizarGrupoCampos(grupo);
@@ -200,11 +221,6 @@ function crearGrupoCampos(origen) {
   const texto = document.createElement('span');
   texto.textContent = origen === 'partida' ? 'Campos de partidas' : 'Campos del documento';
   titulo.appendChild(texto);
-
-  const insignia = document.createElement('span');
-  insignia.className = `campo-libre__origen campo-libre__origen--${origen}`;
-  insignia.textContent = origen === 'partida' ? 'Partidas' : 'Documento';
-  titulo.appendChild(insignia);
 
   const lista = document.createElement('div');
   lista.className = 'campos-libres__lista';
@@ -252,6 +268,61 @@ function pintarPartidas(partidas = []) {
     fila.querySelector('[data-columna="total"]').textContent = formatoDinero(partida.total);
     elementos.tablaPartidas.appendChild(fila);
   });
+
+  pintarCamposLibresPartidas(partidas);
+}
+
+function pintarCamposLibresPartidas(partidas = []) {
+  if (!elementos.camposPartidas || !elementos.listaCamposPartidas || !elementos.mensajeCamposPartidas) {
+    return;
+  }
+
+  elementos.listaCamposPartidas.innerHTML = '';
+
+  if (!partidas.length) {
+    elementos.camposPartidas.hidden = true;
+    elementos.mensajeCamposPartidas.hidden = true;
+    return;
+  }
+
+  if (!camposPartidasDisponibles) {
+    elementos.camposPartidas.hidden = false;
+    elementos.mensajeCamposPartidas.textContent = 'No hay campos libres configurados para las partidas.';
+    elementos.mensajeCamposPartidas.hidden = false;
+    return;
+  }
+
+  const fragmento = document.createDocumentFragment();
+  partidas.forEach((partida) => {
+    const detalle = document.createElement('details');
+    detalle.className = 'partida-campos';
+    if (partidas.length <= 2) {
+      detalle.open = true;
+    }
+    const resumen = document.createElement('summary');
+    const articulo = partida.articulo || 'Sin artículo';
+    resumen.textContent = `Partida ${partida.numero} · ${articulo}`;
+    detalle.appendChild(resumen);
+
+    const lista = document.createElement('dl');
+    lista.className = 'partida-campos__lista';
+    CAMPOS_LIBRES.forEach((clave, indice) => {
+      const etiqueta = obtenerEtiquetaCampoPartida(clave, indice + 1);
+      const valor = partida.camposLibres && partida.camposLibres[clave] ? partida.camposLibres[clave] : '';
+      const dt = document.createElement('dt');
+      dt.textContent = etiqueta;
+      const dd = document.createElement('dd');
+      dd.textContent = valor || '—';
+      lista.appendChild(dt);
+      lista.appendChild(dd);
+    });
+    detalle.appendChild(lista);
+    fragmento.appendChild(detalle);
+  });
+
+  elementos.listaCamposPartidas.appendChild(fragmento);
+  elementos.camposPartidas.hidden = false;
+  elementos.mensajeCamposPartidas.hidden = true;
 }
 
 function prepararFiltroCampos(grupos) {
@@ -262,11 +333,9 @@ function prepararFiltroCampos(grupos) {
   if (grupos) {
     const tieneDocumento = grupos.documento.total > 0;
     const tienePartida = grupos.partida.total > 0;
-    if (tieneDocumento && tienePartida) {
+    if (tieneDocumento && !tienePartida) {
       filtro = 'documento';
-    } else if (tieneDocumento) {
-      filtro = 'documento';
-    } else if (tienePartida) {
+    } else if (!tieneDocumento && tienePartida) {
       filtro = 'partida';
     }
   }
@@ -410,6 +479,16 @@ function ocultarFormularioCampos() {
     'Selecciona un documento para mostrar su información y editar los campos libres.';
   elementos.estadoGuardado.textContent = '';
   elementos.estadoGuardado.classList.remove('estado-guardado--error');
+  camposPartidasDisponibles = false;
+  if (elementos.camposPartidas) {
+    elementos.camposPartidas.hidden = true;
+  }
+  if (elementos.listaCamposPartidas) {
+    elementos.listaCamposPartidas.innerHTML = '';
+  }
+  if (elementos.mensajeCamposPartidas) {
+    elementos.mensajeCamposPartidas.hidden = true;
+  }
 }
 
 function mostrarMensaje(texto) {
@@ -515,11 +594,19 @@ function obtenerOrigenCampo(clave) {
 }
 
 function obtenerEtiquetaCampo(clave, indice) {
+  const origen = obtenerOrigenCampo(clave);
+  if (origen === 'partida') {
+    return obtenerEtiquetaCampoPartida(clave, indice);
+  }
   if (etiquetasCampos.documento && etiquetasCampos.documento[clave]) {
     return etiquetasCampos.documento[clave];
   }
+  return `Campo libre ${indice}`;
+}
+
+function obtenerEtiquetaCampoPartida(clave, indice) {
   if (etiquetasCampos.partidas && etiquetasCampos.partidas[clave]) {
-    return `${etiquetasCampos.partidas[clave]} (Partidas)`;
+    return etiquetasCampos.partidas[clave];
   }
   return `Campo libre ${indice}`;
 }
@@ -562,13 +649,27 @@ function actualizarEstadoGuardado(texto, esError = false) {
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     await cargarTiposDocumento();
+    await buscarDocumentos();
   } catch (error) {
     mostrarMensaje(error.message);
   }
 });
 
 if (elementos.formularioBusqueda) {
-  elementos.formularioBusqueda.addEventListener('submit', buscarDocumentos);
+  elementos.formularioBusqueda.addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    buscarDocumentos();
+  });
+}
+
+if (elementos.termino) {
+  elementos.termino.addEventListener('input', programarBusqueda);
+}
+
+if (elementos.tipoDocumento) {
+  elementos.tipoDocumento.addEventListener('change', () => {
+    buscarDocumentos();
+  });
 }
 
 if (elementos.formularioCampos) {

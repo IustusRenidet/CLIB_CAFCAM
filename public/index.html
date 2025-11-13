@@ -55,17 +55,10 @@
               <select id="tipo-documento" class="control-busqueda" required></select>
             </label>
 
-            <label class="campo-formulario">
-              <span>Empresa</span>
-              <input id="empresa" class="control-busqueda" type="number" min="1" max="99" value="1" required />
-            </label>
-
             <label class="campo-formulario campo-formulario--texto">
-              <span>Buscar por clave</span>
-              <input id="termino" class="control-busqueda" type="text" placeholder="" />
+              <span>Buscar por clave o cliente</span>
+              <input id="termino" class="control-busqueda" type="text" placeholder="" autocomplete="off" />
             </label>
-
-            <button class="boton-primario" type="submit">Buscar</button>
           </form>
 
           <div class="tabla-documentos">
@@ -137,6 +130,11 @@
                   <tbody id="partidas"></tbody>
                 </table>
                 <p id="sin-partidas" class="mensaje-vacio" hidden>El documento no tiene partidas registradas.</p>
+              </div>
+              <div class="campos-partidas" id="campos-partidas" hidden>
+                <p class="small-label">Campos libres de partidas</p>
+                <div id="lista-campos-partidas" class="campos-partidas__lista"></div>
+                <p id="sin-campos-partidas" class="mensaje-vacio" hidden>No hay campos libres configurados para las partidas.</p>
               </div>
             </div>
           </div>

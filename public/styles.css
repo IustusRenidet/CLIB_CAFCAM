@@ -805,6 +805,54 @@ body {
   white-space: nowrap;
 }
 
+.campos-partidas {
+  border: 1px solid var(--color-borde);
+  border-radius: 1rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.campos-partidas__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.partida-campos {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 0.85rem;
+  padding: 0.75rem 1rem;
+  background-color: rgba(15, 23, 42, 0.02);
+}
+
+.partida-campos summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.partida-campos__lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.4rem 1rem;
+  margin: 0.5rem 0 0;
+}
+
+.partida-campos__lista dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-texto-suave);
+}
+
+.partida-campos__lista dd {
+  margin: 0 0 0.4rem;
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
 .toast-container {
   position: fixed;
   bottom: 1.5rem;

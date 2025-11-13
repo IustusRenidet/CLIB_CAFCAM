@@ -67,7 +67,7 @@ aplicacion.get('/api/tipos-documento', (req, res) => {
 aplicacion.get('/api/documentos/buscar', asyncHandler(async (req, res) => {
   const definicion = obtenerDefinicionTipo(req.query.tipo);
   const empresa = normalizarEmpresa(req.query.empresa);
-  const termino = formatearTexto(req.query.termino || '');
+  const termino = limitarLongitudBusqueda(formatearTexto(req.query.termino || ''));
   const tablaDocumentos = `${definicion.tabla}${empresa}`;
 
   const resultados = await conConexion(async (db) => {
@@ -115,6 +115,7 @@ aplicacion.get('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
     const tablaDocumentos = `${definicion.tabla}${empresa}`;
     const tablaClib = `${definicion.tablaClib}${empresa}`;
     const tablaPartidas = `${definicion.tablaPartidas}${empresa}`;
+    const tablaPartidasClib = `${definicion.tablaPartidas}_CLIB${empresa}`;
     const tablaParametros = `PARAM_CAMPOSLIBRES${empresa}`;
 
     const existeDocumentos = await verificarTabla(db, tablaDocumentos);
@@ -130,9 +131,9 @@ aplicacion.get('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
 
     const camposLibres = await obtenerCamposLibres(db, tablaClib, claveDocumento);
     const etiquetas = await obtenerEtiquetasCampos(db, tablaParametros, definicion, empresa);
-    const partidas = (await obtenerPartidas(db, tablaPartidas, claveDocumento)) || [];
+    const { partidas, camposDisponiblesPartidas } = await obtenerPartidas(db, tablaPartidas, tablaPartidasClib, claveDocumento);
 
-    return { documento, camposLibres, etiquetas, partidas };
+    return { documento, camposLibres, etiquetas, partidas, camposPartidasDisponibles: camposDisponiblesPartidas };
   });
 
   res.json({ ok: true, ...datos });
@@ -353,21 +354,45 @@ async function obtenerEtiquetasCampos(db, tablaParametros, definicion, empresa) 
   return etiquetas;
 }
 
-async function obtenerPartidas(db, tablaPartidas, claveDocumento) {
-  const existe = await verificarTabla(db, tablaPartidas);
-  if (!existe) {
-    return [];
+async function obtenerPartidas(db, tablaPartidas, tablaPartidasClib, claveDocumento) {
+  const existePartidas = await verificarTabla(db, tablaPartidas);
+  const partidas = [];
+  if (existePartidas) {
+    const consulta = `SELECT CVE_DOC, NUM_PAR, CVE_ART, UNI_VENTA, CANT, PREC, TOT_PARTIDA FROM ${tablaPartidas} WHERE TRIM(UPPER(CVE_DOC)) = ? ORDER BY NUM_PAR`;
+    const registros = await ejecutarConsulta(db, consulta, [claveDocumento.toUpperCase()]);
+    registros.forEach((registro) => {
+      partidas.push({
+        numero: Number.parseInt(registro.NUM_PAR, 10) || 0,
+        articulo: formatearTexto(registro.CVE_ART),
+        unidad: formatearTexto(registro.UNI_VENTA),
+        cantidad: Number(registro.CANT) || 0,
+        precio: Number(registro.PREC) || 0,
+        total: Number(registro.TOT_PARTIDA) || 0
+      });
+    });
   }
-  const consulta = `SELECT CVE_DOC, NUM_PAR, CVE_ART, UNI_VENTA, CANT, PREC, TOT_PARTIDA FROM ${tablaPartidas} WHERE TRIM(UPPER(CVE_DOC)) = ? ORDER BY NUM_PAR`;
-  const registros = await ejecutarConsulta(db, consulta, [claveDocumento.toUpperCase()]);
-  return registros.map((registro) => ({
-    numero: Number.parseInt(registro.NUM_PAR, 10) || 0,
-    articulo: formatearTexto(registro.CVE_ART),
-    unidad: formatearTexto(registro.UNI_VENTA),
-    cantidad: Number(registro.CANT) || 0,
-    precio: Number(registro.PREC) || 0,
-    total: Number(registro.TOT_PARTIDA) || 0
+
+  const camposDisponiblesPartidas = await verificarTabla(db, tablaPartidasClib);
+  const mapaCampos = new Map();
+  if (camposDisponiblesPartidas && partidas.length) {
+    const consultaCampos = `SELECT NUM_PART, ${CAMPOS_LIBRES.join(', ')} FROM ${tablaPartidasClib} WHERE TRIM(UPPER(CLAVE_DOC)) = ?`;
+    const registros = await ejecutarConsulta(db, consultaCampos, [claveDocumento.toUpperCase()]);
+    registros.forEach((registro) => {
+      const numero = Number.parseInt(registro.NUM_PART, 10) || 0;
+      const campos = {};
+      CAMPOS_LIBRES.forEach((campo) => {
+        campos[campo] = formatearTexto(registro[campo]);
+      });
+      mapaCampos.set(numero, campos);
+    });
+  }
+
+  const partidasConCampos = partidas.map((partida) => ({
+    ...partida,
+    camposLibres: mapaCampos.get(partida.numero) || null
   }));
+
+  return { partidas: partidasConCampos, camposDisponiblesPartidas };
 }
 
 async function guardarCamposLibres(db, tablaClib, claveDocumento, campos) {
@@ -390,6 +415,17 @@ async function guardarCamposLibres(db, tablaClib, claveDocumento, campos) {
 
 function crearMapaEtiquetas() {
   return { documento: {}, partidas: {} };
+}
+
+function limitarLongitudBusqueda(texto) {
+  if (!texto) {
+    return '';
+  }
+  const cadena = texto.toString().trim();
+  if (cadena.length <= 30) {
+    return cadena;
+  }
+  return cadena.slice(0, 30);
 }
 
 function normalizarIdentificadorTabla(valor) {
