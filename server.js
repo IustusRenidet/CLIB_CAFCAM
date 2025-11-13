@@ -145,6 +145,7 @@ aplicacion.put('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
   const claveDocumento = normalizarClaveDocumento(req.params.clave);
   const cuerpo = req.body || {};
   const camposRecibidos = cuerpo.campos;
+  const partidasRecibidas = cuerpo.partidas;
 
   if (!camposRecibidos || typeof camposRecibidos !== 'object') {
     throw new AplicacionError('Es necesario enviar un objeto "campos" con los valores a guardar.');
@@ -156,9 +157,12 @@ aplicacion.put('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
     camposNormalizados[campo] = valor === undefined || valor === null ? null : String(valor).trim();
   });
 
+  const partidasNormalizadas = normalizarPartidas(partidasRecibidas);
+
   await conConexion(async (db) => {
     const tablaDocumentos = `${definicion.tabla}${empresa}`;
     const tablaClib = `${definicion.tablaClib}${empresa}`;
+    const tablaPartidasClib = `${definicion.tablaPartidas}_CLIB${empresa}`;
 
     const existeDocumentos = await verificarTabla(db, tablaDocumentos);
     const existeClib = await verificarTabla(db, tablaClib);
@@ -172,6 +176,14 @@ aplicacion.put('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
     }
 
     await guardarCamposLibres(db, tablaClib, claveDocumento, camposNormalizados);
+
+    if (partidasNormalizadas.length) {
+      const existePartidasClib = await verificarTabla(db, tablaPartidasClib);
+      if (!existePartidasClib) {
+        throw new AplicacionError('No existen campos libres configurados para las partidas en esta empresa.', 404);
+      }
+      await guardarCamposLibresPartidas(db, tablaPartidasClib, claveDocumento, partidasNormalizadas);
+    }
   });
 
   res.json({ ok: true, mensaje: 'Campos libres actualizados correctamente.' });
@@ -411,6 +423,58 @@ async function guardarCamposLibres(db, tablaClib, claveDocumento, campos) {
   const marcadores = columnas.map(() => '?').join(', ');
   const consultaInsercion = `INSERT INTO ${tablaClib} (${columnas.join(', ')}) VALUES (${marcadores})`;
   await ejecutarConsulta(db, consultaInsercion, [claveDocumento.toUpperCase(), ...valores]);
+}
+
+function normalizarPartidas(partidas) {
+  if (!Array.isArray(partidas)) {
+    return [];
+  }
+  const mapa = new Map();
+  partidas.forEach((partida) => {
+    if (!partida || typeof partida !== 'object') {
+      return;
+    }
+    const numero = Number.parseInt(partida.numero, 10);
+    if (Number.isNaN(numero) || numero < 0) {
+      return;
+    }
+    const camposOrigen = partida.campos && typeof partida.campos === 'object' ? partida.campos : {};
+    const campos = {};
+    CAMPOS_LIBRES.forEach((campo) => {
+      const valor = camposOrigen[campo];
+      campos[campo] = valor === undefined || valor === null ? null : String(valor).trim();
+    });
+    mapa.set(numero, { numero, campos });
+  });
+  return Array.from(mapa.values());
+}
+
+async function guardarCamposLibresPartidas(db, tablaPartidasClib, claveDocumento, partidas) {
+  if (!partidas.length) {
+    return;
+  }
+  const consultaExistentes = `SELECT NUM_PART FROM ${tablaPartidasClib} WHERE TRIM(UPPER(CLAVE_DOC)) = ?`;
+  const registros = await ejecutarConsulta(db, consultaExistentes, [claveDocumento.toUpperCase()]);
+  const existentes = new Set(
+    registros
+      .map((registro) => Number.parseInt(registro.NUM_PART, 10))
+      .filter((numero) => !Number.isNaN(numero))
+  );
+
+  const columnas = ['CLAVE_DOC', 'NUM_PART', ...CAMPOS_LIBRES];
+  const marcadoresInsercion = columnas.map(() => '?').join(', ');
+  const asignaciones = CAMPOS_LIBRES.map((campo) => `${campo} = ?`).join(', ');
+
+  for (const partida of partidas) {
+    const valores = CAMPOS_LIBRES.map((campo) => partida.campos[campo]);
+    if (existentes.has(partida.numero)) {
+      const consultaActualizacion = `UPDATE ${tablaPartidasClib} SET ${asignaciones} WHERE TRIM(UPPER(CLAVE_DOC)) = ? AND NUM_PART = ?`;
+      await ejecutarConsulta(db, consultaActualizacion, [...valores, claveDocumento.toUpperCase(), partida.numero]);
+      continue;
+    }
+    const consultaInsercion = `INSERT INTO ${tablaPartidasClib} (${columnas.join(', ')}) VALUES (${marcadoresInsercion})`;
+    await ejecutarConsulta(db, consultaInsercion, [claveDocumento.toUpperCase(), partida.numero, ...valores]);
+  }
 }
 
 function crearMapaEtiquetas() {

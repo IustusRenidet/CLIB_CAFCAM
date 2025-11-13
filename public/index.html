@@ -103,40 +103,41 @@
               </div>
             </div>
 
-            <div>
-              <p class="small-label">Campos libres</p>
-              <form id="formulario-campos" class="formulario-campos" hidden>
+            <form id="formulario-campos" class="formulario-campos" hidden>
+              <div>
+                <p class="small-label">Campos libres del documento</p>
                 <div class="campos-libres" id="contenedor-campos"></div>
-                <div class="acciones-formulario">
-                  <button type="submit" class="boton-primario">Guardar cambios</button>
-                  <span id="estado-guardado" class="estado-guardado" role="status"></span>
-                </div>
-              </form>
-            </div>
+              </div>
 
-            <div class="panel-partidas">
-              <div class="tabla-documentos tabla-documentos--partidas">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Partida</th>
-                      <th>Artículo</th>
-                      <th>Unidad</th>
-                      <th>Cantidad</th>
-                      <th>Precio</th>
-                      <th>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody id="partidas"></tbody>
-                </table>
-                <p id="sin-partidas" class="mensaje-vacio" hidden>El documento no tiene partidas registradas.</p>
+              <div class="panel-partidas">
+                <div class="tabla-documentos tabla-documentos--partidas">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Partida</th>
+                        <th>Artículo</th>
+                        <th>Unidad</th>
+                        <th>Cantidad</th>
+                        <th>Precio</th>
+                        <th>Total</th>
+                      </tr>
+                    </thead>
+                    <tbody id="partidas"></tbody>
+                  </table>
+                  <p id="sin-partidas" class="mensaje-vacio" hidden>El documento no tiene partidas registradas.</p>
+                </div>
+                <div class="campos-partidas" id="campos-partidas" hidden>
+                  <p class="small-label">Campos libres de partidas</p>
+                  <div id="lista-campos-partidas" class="campos-partidas__lista"></div>
+                  <p id="sin-campos-partidas" class="mensaje-vacio" hidden>No hay campos libres configurados para las partidas.</p>
+                </div>
               </div>
-              <div class="campos-partidas" id="campos-partidas" hidden>
-                <p class="small-label">Campos libres de partidas</p>
-                <div id="lista-campos-partidas" class="campos-partidas__lista"></div>
-                <p id="sin-campos-partidas" class="mensaje-vacio" hidden>No hay campos libres configurados para las partidas.</p>
+
+              <div class="acciones-formulario">
+                <button type="submit" class="boton-primario">Guardar cambios</button>
+                <span id="estado-guardado" class="estado-guardado" role="status"></span>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       </section>

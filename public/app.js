@@ -21,7 +21,6 @@ const elementos = {
   panelDetalle: document.getElementById('panel-detalle'),
   tabDetalle: document.querySelector('[data-tab-target="detalle"]'),
   botonVolver: document.getElementById('boton-volver'),
-  filtroCampos: document.getElementById('filtro-campos'),
   toastContainer: document.getElementById('toast-container')
 };
 
@@ -168,18 +167,13 @@ function pintarCamposLibres(campos = {}) {
   cambiosPendientes = false;
   actualizarEstadoGuardado('');
 
-  const grupos = {
-    documento: crearGrupoCampos('documento'),
-    partida: crearGrupoCampos('partida')
-  };
+  const lista = document.createElement('div');
+  lista.className = 'campos-libres__lista';
 
   CAMPOS_LIBRES.forEach((clave, indice) => {
     const etiqueta = obtenerEtiquetaCampo(clave, indice + 1);
-    const origen = obtenerOrigenCampo(clave);
-
     const campo = document.createElement('label');
     campo.className = 'campo-libre';
-    campo.dataset.origenCampo = origen;
 
     const encabezado = document.createElement('div');
     encabezado.className = 'campo-libre__encabezado';
@@ -197,61 +191,11 @@ function pintarCamposLibres(campos = {}) {
     entrada.maxLength = 100;
     entrada.addEventListener('input', marcarCambiosPendientes);
     campo.appendChild(entrada);
-    const grupoDestino = grupos[origen] || grupos.documento;
-    grupoDestino.lista.appendChild(campo);
-    grupoDestino.total += 1;
+
+    lista.appendChild(campo);
   });
 
-  Object.values(grupos).forEach((grupo) => {
-    actualizarGrupoCampos(grupo);
-    elementos.contenedorCampos.appendChild(grupo.elemento);
-  });
-
-  prepararFiltroCampos(grupos);
-}
-
-function crearGrupoCampos(origen) {
-  const elemento = document.createElement('div');
-  elemento.className = 'campos-libres__grupo';
-  elemento.dataset.tablaOrigen = origen;
-
-  const titulo = document.createElement('div');
-  titulo.className = 'campos-libres__titulo';
-
-  const texto = document.createElement('span');
-  texto.textContent = origen === 'partida' ? 'Campos de partidas' : 'Campos del documento';
-  titulo.appendChild(texto);
-
-  const lista = document.createElement('div');
-  lista.className = 'campos-libres__lista';
-
-  const mensaje = document.createElement('p');
-  mensaje.className = 'campos-libres__mensaje';
-  mensaje.textContent =
-    origen === 'partida'
-      ? 'No hay campos libres configurados para las partidas.'
-      : 'No hay campos libres configurados para el documento.';
-  mensaje.hidden = true;
-
-  elemento.appendChild(titulo);
-  elemento.appendChild(lista);
-  elemento.appendChild(mensaje);
-
-  return { elemento, lista, mensaje, total: 0, origen };
-}
-
-function actualizarGrupoCampos(grupo) {
-  const hayCampos = grupo.total > 0;
-  grupo.elemento.dataset.totalCampos = String(grupo.total);
-  if (hayCampos) {
-    grupo.lista.hidden = false;
-    grupo.mensaje.hidden = true;
-  } else {
-    grupo.lista.hidden = true;
-    grupo.mensaje.hidden = false;
-  }
-
-  prepararFiltroCampos();
+  elementos.contenedorCampos.appendChild(lista);
 }
 
 function pintarPartidas(partidas = []) {
@@ -278,15 +222,18 @@ function pintarCamposLibresPartidas(partidas = []) {
   }
 
   elementos.listaCamposPartidas.innerHTML = '';
+  elementos.listaCamposPartidas.hidden = false;
 
   if (!partidas.length) {
     elementos.camposPartidas.hidden = true;
+    elementos.listaCamposPartidas.hidden = true;
     elementos.mensajeCamposPartidas.hidden = true;
     return;
   }
 
   if (!camposPartidasDisponibles) {
     elementos.camposPartidas.hidden = false;
+    elementos.listaCamposPartidas.hidden = true;
     elementos.mensajeCamposPartidas.textContent = 'No hay campos libres configurados para las partidas.';
     elementos.mensajeCamposPartidas.hidden = false;
     return;
@@ -294,97 +241,55 @@ function pintarCamposLibresPartidas(partidas = []) {
 
   const fragmento = document.createDocumentFragment();
   partidas.forEach((partida) => {
-    const detalle = document.createElement('details');
-    detalle.className = 'partida-campos';
-    if (partidas.length <= 2) {
-      detalle.open = true;
-    }
-    const resumen = document.createElement('summary');
-    const articulo = partida.articulo || 'Sin artículo';
-    resumen.textContent = `Partida ${partida.numero} · ${articulo}`;
-    detalle.appendChild(resumen);
+    const contenedor = document.createElement('section');
+    contenedor.className = 'partida-campos';
+    contenedor.dataset.numeroPartida = partida.numero;
 
-    const lista = document.createElement('dl');
-    lista.className = 'partida-campos__lista';
+    const encabezado = document.createElement('div');
+    encabezado.className = 'partida-campos__encabezado';
+    const articulo = partida.articulo || 'Sin artículo';
+    const titulo = document.createElement('p');
+    titulo.className = 'partida-campos__titulo';
+    titulo.textContent = `Partida ${partida.numero} · ${articulo}`;
+    const subtitulo = document.createElement('p');
+    subtitulo.className = 'partida-campos__subtitulo';
+    const cantidad = `${formatoCantidad(partida.cantidad)} ${partida.unidad || ''}`.trim();
+    subtitulo.textContent = cantidad || '—';
+    encabezado.appendChild(titulo);
+    encabezado.appendChild(subtitulo);
+
+    const lista = document.createElement('div');
+    lista.className = 'partida-campos__campos';
     CAMPOS_LIBRES.forEach((clave, indice) => {
       const etiqueta = obtenerEtiquetaCampoPartida(clave, indice + 1);
-      const valor = partida.camposLibres && partida.camposLibres[clave] ? partida.camposLibres[clave] : '';
-      const dt = document.createElement('dt');
-      dt.textContent = etiqueta;
-      const dd = document.createElement('dd');
-      dd.textContent = valor || '—';
-      lista.appendChild(dt);
-      lista.appendChild(dd);
+      const campo = document.createElement('label');
+      campo.className = 'campo-libre campo-libre--partida';
+
+      const span = document.createElement('span');
+      span.textContent = etiqueta;
+      campo.appendChild(span);
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = partida.camposLibres && partida.camposLibres[clave] ? partida.camposLibres[clave] : '';
+      input.dataset.claveCampo = clave;
+      input.dataset.numeroPartida = partida.numero;
+      input.maxLength = 100;
+      input.addEventListener('input', marcarCambiosPendientes);
+      campo.appendChild(input);
+
+      lista.appendChild(campo);
     });
-    detalle.appendChild(lista);
-    fragmento.appendChild(detalle);
+
+    contenedor.appendChild(encabezado);
+    contenedor.appendChild(lista);
+    fragmento.appendChild(contenedor);
   });
 
   elementos.listaCamposPartidas.appendChild(fragmento);
   elementos.camposPartidas.hidden = false;
+  elementos.listaCamposPartidas.hidden = false;
   elementos.mensajeCamposPartidas.hidden = true;
-}
-
-function prepararFiltroCampos(grupos) {
-  if (!elementos.filtroCampos) {
-    return;
-  }
-  let filtro = 'todos';
-  if (grupos) {
-    const tieneDocumento = grupos.documento.total > 0;
-    const tienePartida = grupos.partida.total > 0;
-    if (tieneDocumento && !tienePartida) {
-      filtro = 'documento';
-    } else if (!tieneDocumento && tienePartida) {
-      filtro = 'partida';
-    }
-  }
-  elementos.filtroCampos.value = filtro;
-  aplicarFiltroCampos();
-}
-
-function aplicarFiltroCampos() {
-  if (!elementos.filtroCampos) {
-    return;
-  }
-  const filtro = elementos.filtroCampos.value;
-  elementos.contenedorCampos.querySelectorAll('.campos-libres__grupo').forEach((grupo) => {
-    const lista = grupo.querySelector('.campos-libres__lista');
-    const mensaje = grupo.querySelector('.campos-libres__mensaje');
-    const totalCampos = Number(grupo.dataset.totalCampos || '0');
-    if (!totalCampos) {
-      grupo.hidden = false;
-      if (lista) {
-        lista.hidden = true;
-      }
-      if (mensaje) {
-        mensaje.hidden = false;
-      }
-      return;
-    }
-
-    let visibles = 0;
-    grupo.querySelectorAll('.campo-libre').forEach((campo) => {
-      const origen = campo.dataset.origenCampo || 'documento';
-      const visible = filtro === 'todos' || filtro === origen;
-      campo.hidden = !visible;
-      if (visible) {
-        visibles += 1;
-      }
-    });
-
-    if (visibles > 0) {
-      grupo.hidden = false;
-      if (lista) {
-        lista.hidden = false;
-      }
-      if (mensaje) {
-        mensaje.hidden = true;
-      }
-    } else {
-      grupo.hidden = true;
-    }
-  });
 }
 
 function marcarCambiosPendientes() {
@@ -545,6 +450,21 @@ async function guardarCampos(evento) {
     campos[input.dataset.claveCampo] = input.value.trim();
   });
 
+  const partidas = [];
+  if (camposPartidasDisponibles && elementos.listaCamposPartidas) {
+    elementos.listaCamposPartidas.querySelectorAll('[data-numero-partida]').forEach((contenedor) => {
+      const numero = Number.parseInt(contenedor.dataset.numeroPartida, 10);
+      if (Number.isNaN(numero)) {
+        return;
+      }
+      const camposPartida = {};
+      contenedor.querySelectorAll('[data-clave-campo]').forEach((input) => {
+        camposPartida[input.dataset.claveCampo] = input.value.trim();
+      });
+      partidas.push({ numero, campos: camposPartida });
+    });
+  }
+
   actualizarEstadoGuardado('Guardando…');
 
   const url = `/api/documentos/${documentoSeleccionado.tipo}/${documentoSeleccionado.empresa}/${encodeURIComponent(
@@ -557,7 +477,7 @@ async function guardarCampos(evento) {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ campos })
+      body: JSON.stringify({ campos, partidas })
     });
 
     const datos = await respuesta.json();
@@ -583,21 +503,7 @@ function crearEstructuraEtiquetas(etiquetas) {
   };
 }
 
-function obtenerOrigenCampo(clave) {
-  if (etiquetasCampos.documento && Object.prototype.hasOwnProperty.call(etiquetasCampos.documento, clave)) {
-    return 'documento';
-  }
-  if (etiquetasCampos.partidas && Object.prototype.hasOwnProperty.call(etiquetasCampos.partidas, clave)) {
-    return 'partida';
-  }
-  return 'documento';
-}
-
 function obtenerEtiquetaCampo(clave, indice) {
-  const origen = obtenerOrigenCampo(clave);
-  if (origen === 'partida') {
-    return obtenerEtiquetaCampoPartida(clave, indice);
-  }
   if (etiquetasCampos.documento && etiquetasCampos.documento[clave]) {
     return etiquetasCampos.documento[clave];
   }
@@ -678,10 +584,6 @@ if (elementos.formularioCampos) {
 
 if (elementos.botonVolver) {
   elementos.botonVolver.addEventListener('click', volverAPanelBusqueda);
-}
-
-if (elementos.filtroCampos) {
-  elementos.filtroCampos.addEventListener('change', aplicarFiltroCampos);
 }
 
 inicializarTabs();
