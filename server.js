@@ -75,6 +75,14 @@ const TIPOS_DOCUMENTO = {
     tablaClib: 'FACTG_CLIB',
     tablaPartidas: 'PAR_FACTG',
     tablaPartidasClib: 'PAR_FACTG_CLIB'
+  },
+  T: {
+    clave: 'T',
+    descripcion: 'Traslado Carta Porte',
+    tabla: 'FACTT',
+    tablaClib: 'FACTT_CLIB',
+    tablaPartidas: 'PAR_FACTT',
+    tablaPartidasClib: 'PAR_FACTT_CLIB'
   }
 };
 
@@ -87,7 +95,8 @@ const MAPA_IDTABLAS_DOCUMENTO = {
   V: ['FACTV_CLIB'],
   A: ['FACTA_CLIB'],
   E: ['FACTE_CLIB'],
-  G: ['FACTG_CLIB']
+  G: ['FACTG_CLIB'],
+  T: ['FACTT_CLIB']
 };
 
 const MAPA_IDTABLAS_PARAM_PARTIDAS = {
@@ -99,7 +108,8 @@ const MAPA_IDTABLAS_PARAM_PARTIDAS = {
   V: ['PAR_FACTV_CLIB', 'PAR_FACV_CLIB'],
   A: ['PAR_FACTA_CLIB', 'PAR_FACA_CLIB'],
   E: ['PAR_FACTE_CLIB', 'PAR_FACE_CLIB'],
-  G: ['PAR_FACTG_CLIB', 'PAR_FACG_CLIB']
+  G: ['PAR_FACTG_CLIB', 'PAR_FACG_CLIB'],
+  T: ['PAR_FACTT_CLIB', 'PAR_FACT_CLIB']
 };
 
 const TODAS_IDTABLAS_PARTIDAS = crearSetIdTablasPartidas();
