@@ -234,6 +234,8 @@ function actualizarGrupoCampos(grupo) {
     grupo.lista.hidden = true;
     grupo.mensaje.hidden = false;
   }
+
+  prepararFiltroCampos();
 }
 
 function pintarPartidas(partidas = []) {
