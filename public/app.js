@@ -121,7 +121,7 @@ async function cargarDocumento(registro) {
     };
 
     etiquetasCampos = crearEstructuraEtiquetas(datos.etiquetas);
-    elementos.descripcionDocumento.textContent = `Editando ${datos.documento.descripcion}.`;
+    elementos.descripcionDocumento.textContent = `${datos.documento.descripcion}.`;
     elementos.resumenDocumento.hidden = false;
     elementos.detalleClave.textContent = datos.documento.cveDoc;
     elementos.detalleCliente.textContent = datos.documento.cliente || 'Sin cliente';
