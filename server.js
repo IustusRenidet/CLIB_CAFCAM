@@ -114,7 +114,8 @@ const MAPA_IDTABLAS_PARAM_PARTIDAS = {
 
 const TODAS_IDTABLAS_PARTIDAS = crearSetIdTablasPartidas();
 
-const CAMPOS_LIBRES = Array.from({ length: 11 }, (_, indice) => `CAMPLIB${indice + 1}`);
+const PREFIJO_CAMPOS_LIBRES = 'CAMPLIB';
+const REGEX_CAMPO_LIBRE = /^CAMPLIB\d+$/;
 const LONGITUD_MAXIMA_BUSQUEDA_GENERAL = 30;
 const LONGITUD_MAXIMA_CVE_DOC = 20;
 const LONGITUD_MAXIMA_CVE_CLIENTE = 10;
@@ -135,7 +136,6 @@ const CONFIGURACION_FIREBIRD = {
 const aplicacion = express();
 const cacheTablas = new Map();
 const cacheCamposTabla = new Map();
-const CAMPOS_LIBRES_SQL = CAMPOS_LIBRES.map((campo) => `'${campo}'`).join(', ');
 let servidorHttp = null;
 
 aplicacion.disable('x-powered-by');
@@ -248,15 +248,6 @@ aplicacion.put('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
     throw new AplicacionError('Es necesario enviar un objeto "campos" con los valores a guardar.');
   }
 
-  const camposNormalizados = {};
-  CAMPOS_LIBRES.forEach((campo) => {
-    const valor = camposRecibidos[campo];
-    const texto = valor === undefined || valor === null ? '' : String(valor).trim();
-    camposNormalizados[campo] = texto ? texto : null;
-  });
-
-  const partidasNormalizadas = normalizarPartidas(partidasRecibidas);
-
   await conConexion(async (db) => {
     const tablaDocumentos = `${definicion.tabla}${empresa}`;
     const tablaClib = `${definicion.tablaClib}${empresa}`;
@@ -276,11 +267,12 @@ aplicacion.put('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
     if (existeClib) {
       const camposDisponiblesDocumento = await obtenerCamposDisponiblesEnTabla(db, tablaClib);
       if (camposDisponiblesDocumento.length) {
+        const camposNormalizados = normalizarCamposLibres(camposRecibidos, camposDisponiblesDocumento);
         await guardarCamposLibres(db, tablaClib, claveDocumento, camposNormalizados, camposDisponiblesDocumento);
       }
     }
 
-    if (partidasNormalizadas.length) {
+    if (Array.isArray(partidasRecibidas) && partidasRecibidas.length) {
       if (!tablaPartidasClib) {
         throw new AplicacionError('No existen campos libres configurados para las partidas en esta empresa.', 404);
       }
@@ -288,7 +280,14 @@ aplicacion.put('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
       if (!camposDisponiblesPartidas.length) {
         throw new AplicacionError('No existen campos libres configurados para las partidas en esta empresa.', 404);
       }
-      await guardarCamposLibresPartidas(db, tablaPartidasClib, claveDocumento, partidasNormalizadas, camposDisponiblesPartidas);
+      const partidasNormalizadas = normalizarPartidas(partidasRecibidas, camposDisponiblesPartidas);
+      await guardarCamposLibresPartidas(
+        db,
+        tablaPartidasClib,
+        claveDocumento,
+        partidasNormalizadas,
+        camposDisponiblesPartidas
+      );
     }
   });
 
@@ -422,13 +421,13 @@ async function obtenerCamposDisponiblesEnTabla(db, nombreTabla) {
     SELECT TRIM(UPPER(RDB$FIELD_NAME)) AS CAMPO
     FROM RDB$RELATION_FIELDS
     WHERE TRIM(UPPER(RDB$RELATION_NAME)) = ?
-      AND TRIM(UPPER(RDB$FIELD_NAME)) IN (${CAMPOS_LIBRES_SQL})
+      AND TRIM(UPPER(RDB$FIELD_NAME)) LIKE '${PREFIJO_CAMPOS_LIBRES}%'
     ORDER BY RDB$FIELD_POSITION
   `;
   const registros = await ejecutarConsulta(db, consulta, [tabla]);
   const campos = registros
-    .map((registro) => normalizarIdentificadorTabla(registro.CAMPO))
-    .filter((campo) => campo && CAMPOS_LIBRES.includes(campo));
+    .map((registro) => normalizarIdentificadorCampoLibre(registro.CAMPO))
+    .filter(Boolean);
   cacheCamposTabla.set(tabla, campos);
   return campos;
 }
@@ -451,7 +450,7 @@ async function obtenerDocumento(db, tablaDocumentos, claveDocumento) {
   };
 }
 
-async function obtenerCamposLibres(db, tablaClib, claveDocumento, camposDisponibles = CAMPOS_LIBRES) {
+async function obtenerCamposLibres(db, tablaClib, claveDocumento, camposDisponibles = []) {
   if (!camposDisponibles.length) {
     return {};
   }
@@ -490,7 +489,7 @@ async function obtenerEtiquetasCampos(db, tablaParametros, definicion, empresa) 
 
   registros.forEach((registro) => {
     const campo = formatearTexto(registro.CAMPO).toUpperCase();
-    if (!CAMPOS_LIBRES.includes(campo)) {
+    if (!REGEX_CAMPO_LIBRE.test(campo)) {
       return;
     }
     const idTabla = normalizarIdentificadorTabla(registro.IDTABLA);
@@ -549,7 +548,7 @@ async function obtenerPartidas(db, tablaPartidas, tablaPartidasClib, claveDocume
   return { partidas: partidasConCampos, camposDisponiblesPartidas };
 }
 
-async function guardarCamposLibres(db, tablaClib, claveDocumento, campos, columnasDisponibles = CAMPOS_LIBRES) {
+async function guardarCamposLibres(db, tablaClib, claveDocumento, campos, columnasDisponibles = []) {
   if (!columnasDisponibles.length) {
     return;
   }
@@ -570,8 +569,21 @@ async function guardarCamposLibres(db, tablaClib, claveDocumento, campos, column
   await ejecutarConsulta(db, consultaInsercion, [claveDocumento.toUpperCase(), ...valores]);
 }
 
-function normalizarPartidas(partidas) {
-  if (!Array.isArray(partidas)) {
+function normalizarCamposLibres(camposOrigen = {}, camposDisponibles = []) {
+  const resultado = {};
+  if (!camposDisponibles.length) {
+    return resultado;
+  }
+  camposDisponibles.forEach((campo) => {
+    const valor = camposOrigen && Object.prototype.hasOwnProperty.call(camposOrigen, campo) ? camposOrigen[campo] : '';
+    const texto = valor === undefined || valor === null ? '' : String(valor).trim();
+    resultado[campo] = texto ? texto : null;
+  });
+  return resultado;
+}
+
+function normalizarPartidas(partidas, camposDisponibles = []) {
+  if (!Array.isArray(partidas) || !camposDisponibles.length) {
     return [];
   }
   const mapa = new Map();
@@ -584,18 +596,13 @@ function normalizarPartidas(partidas) {
       return;
     }
     const camposOrigen = partida.campos && typeof partida.campos === 'object' ? partida.campos : {};
-    const campos = {};
-    CAMPOS_LIBRES.forEach((campo) => {
-      const valor = camposOrigen[campo];
-      const texto = valor === undefined || valor === null ? '' : String(valor).trim();
-      campos[campo] = texto ? texto : null;
-    });
+    const campos = normalizarCamposLibres(camposOrigen, camposDisponibles);
     mapa.set(numero, { numero, campos });
   });
   return Array.from(mapa.values());
 }
 
-function tieneInformacionEnCampos(campos, camposHabilitados = CAMPOS_LIBRES) {
+function tieneInformacionEnCampos(campos, camposHabilitados = []) {
   if (!campos || typeof campos !== 'object') {
     return false;
   }
@@ -610,7 +617,7 @@ function tieneInformacionEnCampos(campos, camposHabilitados = CAMPOS_LIBRES) {
   });
 }
 
-async function guardarCamposLibresPartidas(db, tablaPartidasClib, claveDocumento, partidas, columnasDisponibles = CAMPOS_LIBRES) {
+async function guardarCamposLibresPartidas(db, tablaPartidasClib, claveDocumento, partidas, columnasDisponibles = []) {
   if (!columnasDisponibles.length) {
     return;
   }
@@ -663,6 +670,14 @@ function normalizarIdentificadorTabla(valor) {
     return '';
   }
   return valor.toString().trim().toUpperCase();
+}
+
+function normalizarIdentificadorCampoLibre(valor) {
+  const clave = normalizarIdentificadorTabla(valor);
+  if (!REGEX_CAMPO_LIBRE.test(clave)) {
+    return '';
+  }
+  return clave;
 }
 
 function obtenerIdTablasParametrosDocumento(definicion, empresa) {

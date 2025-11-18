@@ -29,7 +29,7 @@ const elementos = {
   modalConfirmacionCancelar: document.querySelector('[data-modal-cancelar]')
 };
 
-const CAMPOS_LIBRES = Array.from({ length: 11 }, (_, indice) => `CAMPLIB${indice + 1}`);
+const REGEX_CAMPO_LIBRE = /^CAMPLIB\d+$/i;
 const EMPRESA_FIJA = '1';
 const MENSAJE_CAMBIOS_PENDIENTES = 'Tienes cambios sin guardar. Si continúas, no se aplicarán.';
 
@@ -675,15 +675,12 @@ function obtenerCamposDocumentoDisponibles(datos = {}) {
   if (Object.prototype.hasOwnProperty.call(datos, 'camposDisponiblesDocumento')) {
     return normalizarCamposDisponibles(datos.camposDisponiblesDocumento);
   }
-  return CAMPOS_LIBRES.slice();
+  return [];
 }
 
 function obtenerCamposPartidasDisponibles(datos = {}) {
   if (Array.isArray(datos.camposPartidasDisponibles)) {
     return normalizarCamposDisponibles(datos.camposPartidasDisponibles);
-  }
-  if (datos.camposPartidasDisponibles === true) {
-    return CAMPOS_LIBRES.slice();
   }
   return [];
 }
@@ -696,7 +693,7 @@ function normalizarCamposDisponibles(lista) {
   const campos = [];
   lista.forEach((campo) => {
     const clave = (campo || '').toString().trim().toUpperCase();
-    if (!clave || !CAMPOS_LIBRES.includes(clave) || vistos.has(clave)) {
+    if (!clave || !REGEX_CAMPO_LIBRE.test(clave) || vistos.has(clave)) {
       return;
     }
     vistos.add(clave);
