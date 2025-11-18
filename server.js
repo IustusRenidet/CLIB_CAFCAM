@@ -267,7 +267,12 @@ aplicacion.put('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
     if (existeClib) {
       const camposDisponiblesDocumento = await obtenerCamposDisponiblesEnTabla(db, tablaClib);
       if (camposDisponiblesDocumento.length) {
-        const camposNormalizados = normalizarCamposLibres(camposRecibidos, camposDisponiblesDocumento);
+        const longitudesDocumento = await obtenerLongitudesCamposLibres(db, tablaClib, camposDisponiblesDocumento);
+        const camposNormalizados = normalizarCamposLibres(
+          camposRecibidos,
+          camposDisponiblesDocumento,
+          longitudesDocumento
+        );
         await guardarCamposLibres(db, tablaClib, claveDocumento, camposNormalizados, camposDisponiblesDocumento);
       }
     }
@@ -280,7 +285,8 @@ aplicacion.put('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
       if (!camposDisponiblesPartidas.length) {
         throw new AplicacionError('No existen campos libres configurados para las partidas en esta empresa.', 404);
       }
-      const partidasNormalizadas = normalizarPartidas(partidasRecibidas, camposDisponiblesPartidas);
+      const longitudesPartidas = await obtenerLongitudesCamposLibres(db, tablaPartidasClib, camposDisponiblesPartidas);
+      const partidasNormalizadas = normalizarPartidas(partidasRecibidas, camposDisponiblesPartidas, longitudesPartidas);
       await guardarCamposLibresPartidas(
         db,
         tablaPartidasClib,
@@ -432,6 +438,35 @@ async function obtenerCamposDisponiblesEnTabla(db, nombreTabla) {
   return campos;
 }
 
+async function obtenerLongitudesCamposLibres(db, nombreTabla, camposDisponibles = []) {
+  const tabla = normalizarIdentificadorTabla(nombreTabla);
+  if (!tabla || !camposDisponibles.length) {
+    return new Map();
+  }
+
+  const consulta = `
+    SELECT
+      TRIM(UPPER(rf.RDB$FIELD_NAME)) AS CAMPO,
+      COALESCE(f.RDB$CHARACTER_LENGTH, 0) AS LONGITUD
+    FROM RDB$RELATION_FIELDS rf
+    JOIN RDB$FIELDS f ON rf.RDB$FIELD_SOURCE = f.RDB$FIELD_NAME
+    WHERE TRIM(UPPER(rf.RDB$RELATION_NAME)) = ?
+      AND TRIM(UPPER(rf.RDB$FIELD_NAME)) LIKE '${PREFIJO_CAMPOS_LIBRES}%'
+  `;
+
+  const registros = await ejecutarConsulta(db, consulta, [tabla]);
+  const mapa = new Map();
+  registros.forEach((registro) => {
+    const campo = normalizarIdentificadorCampoLibre(registro.CAMPO);
+    if (!campo || !camposDisponibles.includes(campo)) {
+      return;
+    }
+    const longitud = Number.parseInt(registro.LONGITUD, 10);
+    mapa.set(campo, Number.isFinite(longitud) && longitud > 0 ? longitud : null);
+  });
+  return mapa;
+}
+
 
 
 async function obtenerDocumento(db, tablaDocumentos, claveDocumento) {
@@ -569,7 +604,7 @@ async function guardarCamposLibres(db, tablaClib, claveDocumento, campos, column
   await ejecutarConsulta(db, consultaInsercion, [claveDocumento.toUpperCase(), ...valores]);
 }
 
-function normalizarCamposLibres(camposOrigen = {}, camposDisponibles = []) {
+function normalizarCamposLibres(camposOrigen = {}, camposDisponibles = [], longitudes = new Map()) {
   const resultado = {};
   if (!camposDisponibles.length) {
     return resultado;
@@ -577,12 +612,13 @@ function normalizarCamposLibres(camposOrigen = {}, camposDisponibles = []) {
   camposDisponibles.forEach((campo) => {
     const valor = camposOrigen && Object.prototype.hasOwnProperty.call(camposOrigen, campo) ? camposOrigen[campo] : '';
     const texto = valor === undefined || valor === null ? '' : String(valor).trim();
-    resultado[campo] = texto ? texto : null;
+    const textoLimitado = limitarLongitudCampoLibre(texto, longitudes.get(campo));
+    resultado[campo] = textoLimitado ? textoLimitado : null;
   });
   return resultado;
 }
 
-function normalizarPartidas(partidas, camposDisponibles = []) {
+function normalizarPartidas(partidas, camposDisponibles = [], longitudes = new Map()) {
   if (!Array.isArray(partidas) || !camposDisponibles.length) {
     return [];
   }
@@ -596,10 +632,17 @@ function normalizarPartidas(partidas, camposDisponibles = []) {
       return;
     }
     const camposOrigen = partida.campos && typeof partida.campos === 'object' ? partida.campos : {};
-    const campos = normalizarCamposLibres(camposOrigen, camposDisponibles);
+    const campos = normalizarCamposLibres(camposOrigen, camposDisponibles, longitudes);
     mapa.set(numero, { numero, campos });
   });
   return Array.from(mapa.values());
+}
+
+function limitarLongitudCampoLibre(texto, longitudMaxima) {
+  if (!texto || !Number.isFinite(longitudMaxima) || longitudMaxima <= 0) {
+    return texto;
+  }
+  return texto.length > longitudMaxima ? texto.slice(0, longitudMaxima) : texto;
 }
 
 function tieneInformacionEnCampos(campos, camposHabilitados = []) {
