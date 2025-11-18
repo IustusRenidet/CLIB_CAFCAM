@@ -219,17 +219,28 @@ aplicacion.get('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
     }
 
     const camposDisponiblesDocumento = existeClib ? await obtenerCamposDisponiblesEnTabla(db, tablaClib) : [];
-    const camposLibres = camposDisponiblesDocumento.length ? await obtenerCamposLibres(db, tablaClib, claveDocumento, camposDisponiblesDocumento) : {};
+    const detalleCamposDocumento = camposDisponiblesDocumento.length
+      ? await obtenerMetadatosCamposLibres(db, tablaClib, camposDisponiblesDocumento)
+      : {};
+    const camposLibres = camposDisponiblesDocumento.length
+      ? await obtenerCamposLibres(db, tablaClib, claveDocumento, camposDisponiblesDocumento)
+      : {};
     const etiquetas = await obtenerEtiquetasCampos(db, tablaParametros, definicion, empresa);
-    const { partidas, camposDisponiblesPartidas } = await obtenerPartidas(db, tablaPartidas, tablaPartidasClib, claveDocumento);
+    const {
+      partidas,
+      camposDisponiblesPartidas,
+      detalleCamposPartidas
+    } = await obtenerPartidas(db, tablaPartidas, tablaPartidasClib, claveDocumento);
 
     return {
       documento,
       camposLibres,
       etiquetas,
       camposDisponiblesDocumento,
+      detalleCamposDocumento,
       partidas,
-      camposPartidasDisponibles: camposDisponiblesPartidas
+      camposPartidasDisponibles: camposDisponiblesPartidas,
+      detalleCamposPartidas
     };
   });
 
@@ -467,7 +478,69 @@ async function obtenerLongitudesCamposLibres(db, nombreTabla, camposDisponibles 
   return mapa;
 }
 
+async function obtenerMetadatosCamposLibres(db, nombreTabla, camposDisponibles = []) {
+  const tabla = normalizarIdentificadorTabla(nombreTabla);
+  if (!tabla || !camposDisponibles.length) {
+    return {};
+  }
 
+  const consulta = `
+    SELECT
+      TRIM(UPPER(rf.RDB$FIELD_NAME)) AS CAMPO,
+      COALESCE(f.RDB$CHARACTER_LENGTH, 0) AS LONGITUD,
+      COALESCE(f.RDB$FIELD_TYPE, 0) AS TIPO,
+      COALESCE(f.RDB$FIELD_SUB_TYPE, 0) AS SUBTIPO
+    FROM RDB$RELATION_FIELDS rf
+    JOIN RDB$FIELDS f ON rf.RDB$FIELD_SOURCE = f.RDB$FIELD_NAME
+    WHERE TRIM(UPPER(rf.RDB$RELATION_NAME)) = ?
+      AND TRIM(UPPER(rf.RDB$FIELD_NAME)) LIKE '${PREFIJO_CAMPOS_LIBRES}%'
+  `;
+
+  const registros = await ejecutarConsulta(db, consulta, [tabla]);
+  const detalle = {};
+  registros.forEach((registro) => {
+    const campo = normalizarIdentificadorCampoLibre(registro.CAMPO);
+    if (!campo || !camposDisponibles.includes(campo)) {
+      return;
+    }
+    const longitud = Number.parseInt(registro.LONGITUD, 10);
+    const tipoCodigo = Number.parseInt(registro.TIPO, 10);
+    const subTipo = Number.parseInt(registro.SUBTIPO, 10);
+    detalle[campo] = {
+      longitud: Number.isFinite(longitud) && longitud > 0 ? longitud : null,
+      tipo: mapearTipoDatoFirebird(tipoCodigo, subTipo)
+    };
+  });
+  return detalle;
+}
+
+function mapearTipoDatoFirebird(tipoCodigo, subTipo) {
+  switch (tipoCodigo) {
+    case 7:
+    case 8:
+      return 'Entero';
+    case 16:
+      return subTipo === 1 ? 'Decimal' : 'Entero';
+    case 10:
+    case 11:
+    case 27:
+      return 'Decimal';
+    case 12:
+      return 'Fecha';
+    case 13:
+      return 'Hora';
+    case 35:
+      return 'Fecha y hora';
+    case 14:
+    case 37:
+    case 40:
+      return 'Texto';
+    case 261:
+      return 'Texto largo';
+    default:
+      return 'Dato';
+  }
+}
 
 async function obtenerDocumento(db, tablaDocumentos, claveDocumento) {
   const consulta =
@@ -554,10 +627,14 @@ async function obtenerPartidas(db, tablaPartidas, tablaPartidasClib, claveDocume
   }
 
   let camposDisponiblesPartidas = [];
+  let detalleCamposPartidas = {};
   if (tablaPartidasClib) {
     const existeTablaClib = await verificarTabla(db, tablaPartidasClib);
     if (existeTablaClib) {
       camposDisponiblesPartidas = await obtenerCamposDisponiblesEnTabla(db, tablaPartidasClib);
+      detalleCamposPartidas = camposDisponiblesPartidas.length
+        ? await obtenerMetadatosCamposLibres(db, tablaPartidasClib, camposDisponiblesPartidas)
+        : {};
     }
   }
 
@@ -580,7 +657,7 @@ async function obtenerPartidas(db, tablaPartidas, tablaPartidasClib, claveDocume
     camposLibres: mapaCampos.get(partida.numero) || null
   }));
 
-  return { partidas: partidasConCampos, camposDisponiblesPartidas };
+  return { partidas: partidasConCampos, camposDisponiblesPartidas, detalleCamposPartidas };
 }
 
 async function guardarCamposLibres(db, tablaClib, claveDocumento, campos, columnasDisponibles = []) {

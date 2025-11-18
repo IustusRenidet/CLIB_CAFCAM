@@ -45,6 +45,8 @@ let temporizadorGuardado = null;
 let temporizadorBusqueda = null;
 let camposDocumentoDisponibles = [];
 let camposPartidasDisponibles = [];
+let metadatosCamposDocumento = {};
+let metadatosCamposPartidas = {};
 let resolverModalConfirmacion = null;
 let ultimoElementoEnfoque = null;
 let temporizadorOcultarModal = null;
@@ -161,6 +163,8 @@ async function cargarDocumento(registro) {
     etiquetasCampos = crearEstructuraEtiquetas(datos.etiquetas);
     camposDocumentoDisponibles = obtenerCamposDocumentoDisponibles(datos);
     camposPartidasDisponibles = obtenerCamposPartidasDisponibles(datos);
+    metadatosCamposDocumento = normalizarMetadatosCampos(datos.detalleCamposDocumento);
+    metadatosCamposPartidas = normalizarMetadatosCampos(datos.detalleCamposPartidas);
     elementos.descripcionDocumento.textContent = `${datos.documento.descripcion}.`;
     elementos.resumenDocumento.hidden = false;
     elementos.detalleClave.textContent = datos.documento.cveDoc;
@@ -197,23 +201,18 @@ function pintarCamposLibres(campos = {}) {
 
   camposDocumentoDisponibles.forEach((clave, indice) => {
     const etiqueta = obtenerEtiquetaCampo(clave, indice + 1);
+    const infoCampo = obtenerMetadatosCampoDocumento(clave);
     const campo = document.createElement('label');
     campo.className = 'campo-libre';
 
-    const encabezado = document.createElement('div');
-    encabezado.className = 'campo-libre__encabezado';
-
-    const span = document.createElement('span');
-    span.textContent = etiqueta;
-    encabezado.appendChild(span);
-
+    const encabezado = crearEncabezadoCampoLibre(etiqueta, infoCampo);
     campo.appendChild(encabezado);
 
     const entrada = document.createElement('input');
     entrada.type = 'text';
     entrada.value = campos[clave] || '';
     entrada.dataset.claveCampo = clave;
-    entrada.maxLength = 100;
+    aplicarMetadatosAlInput(entrada, infoCampo);
     entrada.addEventListener('input', marcarCambiosPendientes);
     campo.appendChild(entrada);
 
@@ -281,19 +280,19 @@ function pintarCamposLibresPartidas(partidas = []) {
     const encabezado = crearEncabezadoPartida(contenedor, partida, idLista);
     camposPartidasDisponibles.forEach((clave, indice) => {
       const etiqueta = obtenerEtiquetaCampoPartida(clave, indice + 1);
+      const infoCampo = obtenerMetadatosCampoPartida(clave);
       const campo = document.createElement('label');
       campo.className = 'campo-libre campo-libre--partida';
 
-      const span = document.createElement('span');
-      span.textContent = etiqueta;
-      campo.appendChild(span);
+      const encabezadoCampo = crearEncabezadoCampoLibre(etiqueta, infoCampo);
+      campo.appendChild(encabezadoCampo);
 
       const input = document.createElement('input');
       input.type = 'text';
       input.value = partida.camposLibres && partida.camposLibres[clave] ? partida.camposLibres[clave] : '';
       input.dataset.claveCampo = clave;
       input.dataset.numeroPartida = partida.numero;
-      input.maxLength = 100;
+      aplicarMetadatosAlInput(input, infoCampo);
       input.addEventListener('input', marcarCambiosPendientes);
       campo.appendChild(input);
 
@@ -531,6 +530,8 @@ function ocultarFormularioCampos() {
   elementos.estadoGuardado.classList.remove('estado-guardado--error');
   camposDocumentoDisponibles = [];
   camposPartidasDisponibles = [];
+  metadatosCamposDocumento = {};
+  metadatosCamposPartidas = {};
   if (elementos.mensajeCamposDocumento) {
     elementos.mensajeCamposDocumento.hidden = true;
   }
@@ -685,6 +686,43 @@ function obtenerCamposPartidasDisponibles(datos = {}) {
   return [];
 }
 
+function normalizarMetadatosCampos(conjunto = {}) {
+  if (!conjunto || typeof conjunto !== 'object') {
+    return {};
+  }
+  const resultado = {};
+  Object.keys(conjunto).forEach((clave) => {
+    const llave = (clave || '').toString().trim().toUpperCase();
+    if (!REGEX_CAMPO_LIBRE.test(llave)) {
+      return;
+    }
+    const info = conjunto[clave] || {};
+    const longitud = Number.parseInt(info.longitud, 10);
+    const tipo = (info.tipo || '').toString().trim();
+    resultado[llave] = {
+      longitud: Number.isFinite(longitud) && longitud > 0 ? longitud : null,
+      tipo: tipo || 'Dato'
+    };
+  });
+  return resultado;
+}
+
+function obtenerMetadatosCampoDocumento(clave) {
+  return obtenerMetadatosCampoDesdeColeccion(metadatosCamposDocumento, clave);
+}
+
+function obtenerMetadatosCampoPartida(clave) {
+  return obtenerMetadatosCampoDesdeColeccion(metadatosCamposPartidas, clave);
+}
+
+function obtenerMetadatosCampoDesdeColeccion(coleccion, clave) {
+  if (!coleccion || !clave) {
+    return null;
+  }
+  const llave = clave.toString().trim().toUpperCase();
+  return coleccion[llave] || null;
+}
+
 function normalizarCamposDisponibles(lista) {
   if (!Array.isArray(lista)) {
     return [];
@@ -700,6 +738,76 @@ function normalizarCamposDisponibles(lista) {
     campos.push(clave);
   });
   return campos;
+}
+
+function crearEncabezadoCampoLibre(etiqueta, infoCampo) {
+  const encabezado = document.createElement('div');
+  encabezado.className = 'campo-libre__encabezado';
+  const span = document.createElement('span');
+  span.textContent = etiqueta;
+  encabezado.appendChild(span);
+  const indicador = crearIndicadorMetadatos(infoCampo);
+  if (indicador) {
+    encabezado.appendChild(indicador);
+  }
+  return encabezado;
+}
+
+function crearIndicadorMetadatos(infoCampo) {
+  const descripcion = descripcionMetadatosCampo(infoCampo);
+  if (!descripcion) {
+    return null;
+  }
+  const indicador = document.createElement('button');
+  indicador.type = 'button';
+  indicador.className = 'campo-libre__info';
+  indicador.setAttribute('aria-label', descripcion);
+  indicador.title = descripcion;
+
+  const icono = document.createElement('span');
+  icono.className = 'campo-libre__info-icono';
+  icono.setAttribute('aria-hidden', 'true');
+  icono.textContent = 'i';
+
+  const tooltip = document.createElement('span');
+  tooltip.className = 'campo-libre__tooltip';
+  tooltip.setAttribute('role', 'tooltip');
+  tooltip.textContent = descripcion;
+
+  indicador.appendChild(icono);
+  indicador.appendChild(tooltip);
+
+  const alternar = (visible) => {
+    indicador.classList.toggle('campo-libre__info--visible', Boolean(visible));
+  };
+  indicador.addEventListener('mouseenter', () => alternar(true));
+  indicador.addEventListener('mouseleave', () => alternar(false));
+  indicador.addEventListener('focus', () => alternar(true));
+  indicador.addEventListener('blur', () => alternar(false));
+
+  return indicador;
+}
+
+function descripcionMetadatosCampo(infoCampo) {
+  const tipo = infoCampo && infoCampo.tipo ? infoCampo.tipo : 'Dato';
+  const longitudTexto =
+    infoCampo && Number.isFinite(infoCampo.longitud) && infoCampo.longitud > 0
+      ? `${infoCampo.longitud} caract.`
+      : 'sin longitud fija';
+  return `Tipo: ${tipo} | Largo: ${longitudTexto}`;
+}
+
+function aplicarMetadatosAlInput(elemento, infoCampo) {
+  if (!elemento) {
+    return;
+  }
+  const descripcion = descripcionMetadatosCampo(infoCampo);
+  if (descripcion) {
+    elemento.title = descripcion;
+  }
+  const longitud =
+    infoCampo && Number.isFinite(infoCampo.longitud) && infoCampo.longitud > 0 ? infoCampo.longitud : 100;
+  elemento.maxLength = longitud;
 }
 
 function mostrarToast(texto, tipo = 'info') {
