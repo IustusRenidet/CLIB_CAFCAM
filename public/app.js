@@ -209,10 +209,8 @@ function pintarCamposLibres(campos = {}) {
     campo.appendChild(encabezado);
 
     const entrada = document.createElement('input');
-    entrada.type = 'text';
-    entrada.value = campos[clave] || '';
     entrada.dataset.claveCampo = clave;
-    aplicarMetadatosAlInput(entrada, infoCampo);
+    aplicarMetadatosAlInput(entrada, infoCampo, campos[clave]);
     entrada.addEventListener('input', marcarCambiosPendientes);
     campo.appendChild(entrada);
 
@@ -288,11 +286,13 @@ function pintarCamposLibresPartidas(partidas = []) {
       campo.appendChild(encabezadoCampo);
 
       const input = document.createElement('input');
-      input.type = 'text';
-      input.value = partida.camposLibres && partida.camposLibres[clave] ? partida.camposLibres[clave] : '';
       input.dataset.claveCampo = clave;
       input.dataset.numeroPartida = partida.numero;
-      aplicarMetadatosAlInput(input, infoCampo);
+      aplicarMetadatosAlInput(
+        input,
+        infoCampo,
+        partida.camposLibres && partida.camposLibres[clave] ? partida.camposLibres[clave] : ''
+      );
       input.addEventListener('input', marcarCambiosPendientes);
       campo.appendChild(input);
 
@@ -597,7 +597,7 @@ async function guardarCampos(evento) {
 
   const campos = {};
   elementos.contenedorCampos.querySelectorAll('[data-clave-campo]').forEach((input) => {
-    campos[input.dataset.claveCampo] = input.value.trim();
+    campos[input.dataset.claveCampo] = obtenerValorParaEnvio(input);
   });
 
   const partidas = [];
@@ -613,7 +613,7 @@ async function guardarCampos(evento) {
       const camposPartida = {};
       // Busca inputs dentro de este contenedor específico
       contenedor.querySelectorAll('input[data-clave-campo]').forEach((input) => {
-        camposPartida[input.dataset.claveCampo] = input.value.trim();
+        camposPartida[input.dataset.claveCampo] = obtenerValorParaEnvio(input);
       });
       
       partidas.push({ numero, campos: camposPartida });
@@ -797,7 +797,7 @@ function descripcionMetadatosCampo(infoCampo) {
   return `Tipo: ${tipo} | Largo: ${longitudTexto}`;
 }
 
-function aplicarMetadatosAlInput(elemento, infoCampo) {
+function aplicarMetadatosAlInput(elemento, infoCampo, valorOriginal) {
   if (!elemento) {
     return;
   }
@@ -808,6 +808,119 @@ function aplicarMetadatosAlInput(elemento, infoCampo) {
   const longitud =
     infoCampo && Number.isFinite(infoCampo.longitud) && infoCampo.longitud > 0 ? infoCampo.longitud : 100;
   elemento.maxLength = longitud;
+
+  const tipoInput = obtenerTipoInputDesdeMetadatos(infoCampo);
+  elemento.type = tipoInput;
+  if (infoCampo && infoCampo.tipo) {
+    elemento.dataset.tipoCampo = infoCampo.tipo;
+  }
+  const valorNormalizado = normalizarValorInicial(valorOriginal, tipoInput);
+  if (valorNormalizado !== undefined) {
+    elemento.value = valorNormalizado;
+  }
+}
+
+function obtenerValorParaEnvio(input) {
+  if (!input) {
+    return '';
+  }
+  const valor = (input.value || '').trim();
+  if (!valor) {
+    return '';
+  }
+  const tipoInput = (input.type || '').toLowerCase();
+  if (tipoInput === 'date') {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(valor)) {
+      return valor;
+    }
+    const fecha = parsearFecha(valor);
+    return fecha ? formatearFechaParaInput(fecha) : valor;
+  }
+  if (tipoInput === 'datetime-local') {
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(valor)) {
+      return valor.slice(0, 16);
+    }
+    const fecha = parsearFecha(valor);
+    return fecha ? formatearFechaHoraParaInput(fecha) : valor;
+  }
+  if (tipoInput === 'time') {
+    if (/^\d{2}:\d{2}/.test(valor)) {
+      return valor.slice(0, 5);
+    }
+    const fecha = parsearFecha(valor);
+    return fecha ? formatearHoraParaInput(fecha) : valor;
+  }
+  return valor;
+}
+
+function obtenerTipoInputDesdeMetadatos(infoCampo) {
+  const tipo = infoCampo && infoCampo.tipo ? infoCampo.tipo.toString().trim().toLowerCase() : '';
+  if (tipo.includes('fecha') && tipo.includes('hora')) {
+    return 'datetime-local';
+  }
+  if (tipo === 'fecha') {
+    return 'date';
+  }
+  if (tipo === 'hora') {
+    return 'time';
+  }
+  return 'text';
+}
+
+function normalizarValorInicial(valor, tipoInput) {
+  if (valor === undefined || valor === null) {
+    return '';
+  }
+  const texto = valor.toString().trim();
+  if (!texto) {
+    return '';
+  }
+  if (tipoInput === 'date') {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+      return texto;
+    }
+    const fecha = parsearFecha(texto);
+    return fecha ? formatearFechaParaInput(fecha) : '';
+  }
+  if (tipoInput === 'datetime-local') {
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(texto)) {
+      return texto.slice(0, 16);
+    }
+    const fecha = parsearFecha(texto);
+    return fecha ? formatearFechaHoraParaInput(fecha) : '';
+  }
+  if (tipoInput === 'time') {
+    if (/^\d{2}:\d{2}/.test(texto)) {
+      return texto.slice(0, 5);
+    }
+    const fecha = parsearFecha(texto);
+    return fecha ? formatearHoraParaInput(fecha) : '';
+  }
+  return texto;
+}
+
+function parsearFecha(valor) {
+  const fecha = valor instanceof Date ? valor : new Date(valor);
+  if (Number.isNaN(fecha.getTime())) {
+    return null;
+  }
+  return fecha;
+}
+
+function formatearFechaParaInput(fecha) {
+  return `${fecha.getFullYear()}-${padDos(fecha.getMonth() + 1)}-${padDos(fecha.getDate())}`;
+}
+
+function formatearFechaHoraParaInput(fecha) {
+  return `${formatearFechaParaInput(fecha)}T${padDos(fecha.getHours())}:${padDos(fecha.getMinutes())}`;
+}
+
+function formatearHoraParaInput(fecha) {
+  return `${padDos(fecha.getHours())}:${padDos(fecha.getMinutes())}`;
+}
+
+function padDos(valor) {
+  return String(valor).padStart(2, '0');
 }
 
 function mostrarToast(texto, tipo = 'info') {

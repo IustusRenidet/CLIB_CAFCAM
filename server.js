@@ -142,6 +142,7 @@ let servidorHttp = null;
 aplicacion.disable('x-powered-by');
 aplicacion.use(express.json({ limit: '1mb' }));
 aplicacion.use(express.static(path.join(__dirname, 'public')));
+aplicacion.use('/icono', express.static(path.join(__dirname, 'icono')));
 
 aplicacion.get('/api/tipos-documento', (req, res) => {
   res.json({
