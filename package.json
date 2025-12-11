@@ -1,6 +1,6 @@
 {
   "name": "clib_llantas",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Campos libres de docs de ventas para Llantas",
   "main": "main.js",
   "author": "Rintel Gatachi <iustusrenidet@gmail.com>",
