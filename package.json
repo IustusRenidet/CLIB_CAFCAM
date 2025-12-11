@@ -1,6 +1,6 @@
 {
   "name": "clib_llantas",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "Campos libres de docs de ventas para Llantas",
   "main": "main.js",
   "author": "Rintel Gatachi <iustusrenidet@gmail.com>",
@@ -11,9 +11,10 @@
   },
   "dependencies": {
     "bootstrap": "^5.3.3",
+    "electron-updater": "^6.6.2",
+    "express": "^4.19.2",
     "node-firebird": "^0.8.9",
-    "tom-select": "^2.3.1",
-    "express": "^4.19.2"
+    "tom-select": "^2.3.1"
   },
   "devDependencies": {
     "electron": "^38.2.1",
@@ -55,6 +56,14 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "artifactName": "${productName}-${version}-setup.${ext}"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "IustusRenidet",
+        "repo": "CLIB_Llantas",
+        "releaseType": "release"
+      }
+    ]
   }
 }

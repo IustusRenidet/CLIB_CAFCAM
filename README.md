@@ -1,10 +1,11 @@
 # CLIB_Llantas
 
 Aplicación web y de escritorio pensada para editar los campos libres de los documentos del módulo de ventas de Aspel SAE.
-Funciona como una SPA servida desde `localhost:3001` para que pueda empaquetarse con Electron y distribuirse usando ASAR.
+Funciona como una SPA servida desde un servidor web local que puede empaquetarse con Electron y distribuirse usando ASAR.
 
 ## Características
 
+- **Múltiples instancias**: Cada ventana de la aplicación usa su propio servidor en un puerto dinámico, permitiendo que varios usuarios o instancias funcionen simultáneamente sin conflictos.
 - Consulta rápida de facturas, pedidos, cotizaciones, remisiones, devoluciones, notas de venta y parcialidades.
 - Lectura y edición de los campos libres (`CAMPLIB1` a `CAMPLIB11`) guardados en las tablas `FACTX_CLIBxx`.
 - Visualización de partidas por documento desde las tablas `PAR_FA...xx` para verificar cantidades y artículos.
@@ -21,7 +22,7 @@ Funciona como una SPA servida desde `localhost:3001` para que pueda empaquetarse
 
 | Variable                | Descripción                                                        | Valor por defecto |
 | ----------------------- | ------------------------------------------------------------------ | ----------------- |
-| `PORT`                  | Puerto HTTP para la SPA                                            | `3001`            |
+| `PORT`                  | Puerto HTTP para la SPA (0 = puerto dinámico automático)          | `0` (dinámico)    |
 | `FIREBIRD_DB_PATH`      | Ruta completa del archivo `.FDB`                                   | Ruta detectada    |
 | `FIREBIRD_HOST`         | IP o nombre del servidor Firebird                                  | `127.0.0.1`       |
 | `FIREBIRD_PORT`         | Puerto de Firebird                                                  | `3050`            |
@@ -34,7 +35,7 @@ Funciona como una SPA servida desde `localhost:3001` para que pueda empaquetarse
 npm run web
 ```
 
-Esto levanta el backend en `http://localhost:3001`. Desde ahí se puede abrir el navegador o apuntar Electron.
+Esto levanta el backend en un puerto dinámico (por defecto el sistema asigna uno disponible). El puerto se muestra en la consola al iniciar.
 
 ## Uso como aplicación de escritorio
 
@@ -42,7 +43,7 @@ Esto levanta el backend en `http://localhost:3001`. Desde ahí se puede abrir el
 npm start
 ```
 
-Electron levanta el mismo servidor web en el puerto 3001 y carga la interfaz en una ventana nativa.
+Electron levanta automáticamente un servidor web en un puerto disponible y carga la interfaz en una ventana nativa. **Puedes abrir múltiples instancias simultáneamente** - cada una usará su propio puerto y funcionará de manera independiente.
 
 ## API disponible
 

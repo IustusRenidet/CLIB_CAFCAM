@@ -1,5 +1,6 @@
-const { app, BrowserWindow } = require('electron');
-const { iniciarServidor, detenerServidor, PUERTO_SERVIDOR } = require('./server');
+const { app, BrowserWindow, dialog } = require('electron');
+const { iniciarServidor, detenerServidor } = require('./server');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 
 // Permitir múltiples instancias
@@ -12,8 +13,55 @@ app.setPath('userData', userDataPath);
 
 let ventanaPrincipal = null;
 
+// Configurar actualizaciones automáticas
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = true;
+
+autoUpdater.on('checking-for-update', () => {
+  console.log('Verificando actualizaciones...');
+});
+
+autoUpdater.on('update-available', (info) => {
+  console.log('Actualización disponible:', info.version);
+  dialog.showMessageBox(ventanaPrincipal, {
+    type: 'info',
+    title: 'Actualización Disponible',
+    message: `Hay una nueva versión disponible (${info.version}). ¿Desea descargarla ahora?`,
+    buttons: ['Sí', 'Más tarde']
+  }).then((result) => {
+    if (result.response === 0) {
+      autoUpdater.downloadUpdate();
+    }
+  });
+});
+
+autoUpdater.on('update-not-available', () => {
+  console.log('La aplicación está actualizada');
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+  console.log(`Descargando: ${Math.round(progressObj.percent)}%`);
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  dialog.showMessageBox(ventanaPrincipal, {
+    type: 'info',
+    title: 'Actualización Lista',
+    message: `La versión ${info.version} se ha descargado. La aplicación se reiniciará para instalarla.`,
+    buttons: ['Reiniciar Ahora', 'Más Tarde']
+  }).then((result) => {
+    if (result.response === 0) {
+      autoUpdater.quitAndInstall();
+    }
+  });
+});
+
+autoUpdater.on('error', (err) => {
+  console.error('Error en actualización:', err);
+});
+
 async function crearVentana() {
-  await iniciarServidor();
+  const { puerto } = await iniciarServidor();
 
   ventanaPrincipal = new BrowserWindow({
     width: 1280,
@@ -28,12 +76,17 @@ async function crearVentana() {
     }
   });
 
-  await ventanaPrincipal.loadURL(`http://localhost:${PUERTO_SERVIDOR}`);
+  await ventanaPrincipal.loadURL(`http://localhost:${puerto}`);
 }
 
 app.whenReady().then(async () => {
   try {
     await crearVentana();
+    
+    // Verificar actualizaciones después de 3 segundos
+    setTimeout(() => {
+      autoUpdater.checkForUpdates();
+    }, 3000);
   } catch (error) {
     console.error('No fue posible iniciar la aplicación:', error);
     app.quit();

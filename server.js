@@ -120,7 +120,8 @@ const LONGITUD_MAXIMA_BUSQUEDA_GENERAL = 30;
 const LONGITUD_MAXIMA_CVE_DOC = 20;
 const LONGITUD_MAXIMA_CVE_CLIENTE = 10;
 const CONDICION_DOCUMENTO_VIGENTE = "TRIM(COALESCE(STATUS, '')) <> 'C'";
-const PUERTO_SERVIDOR = Number(process.env.PORT || 3001);
+// Puerto 0 permite al sistema asignar un puerto disponible automáticamente
+const PUERTO_SERVIDOR = Number(process.env.PORT || 0);
 const RUTA_BASE_DATOS = obtenerRutaBaseDatos();
 const CONFIGURACION_FIREBIRD = {
   host: process.env.FIREBIRD_HOST || '127.0.0.1',
@@ -972,13 +973,14 @@ function extraerComponentesVersion(nombre) {
 
 function iniciarServidor() {
   if (servidorHttp) {
-    return Promise.resolve(servidorHttp);
+    return Promise.resolve({ servidor: servidorHttp, puerto: servidorHttp.address().port });
   }
   return new Promise((resolve, reject) => {
     const servidor = aplicacion.listen(PUERTO_SERVIDOR, '127.0.0.1', () => {
       servidorHttp = servidor;
-      console.log(`Servidor iniciado en http://localhost:${PUERTO_SERVIDOR}`);
-      resolve(servidorHttp);
+      const puertoAsignado = servidor.address().port;
+      console.log(`Servidor iniciado en http://localhost:${puertoAsignado}`);
+      resolve({ servidor: servidorHttp, puerto: puertoAsignado });
     });
     servidor.on('error', (error) => {
       reject(error);
@@ -1009,4 +1011,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { iniciarServidor, detenerServidor, PUERTO_SERVIDOR };
+module.exports = { iniciarServidor, detenerServidor };
