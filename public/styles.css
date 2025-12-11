@@ -771,15 +771,9 @@ body {
 }
 
 .campo-libre__info:hover,
-.campo-libre__info:focus-visible,
 .campo-libre__info.campo-libre__info--visible {
   transform: translateY(-1px);
   box-shadow: 0 10px 22px rgba(29, 78, 216, 0.4);
-}
-
-.campo-libre__info:focus-visible {
-  outline: 2px solid rgba(29, 78, 216, 0.55);
-  outline-offset: 2px;
 }
 
 .campo-libre__info-icono {
@@ -819,8 +813,6 @@ body {
   transform: rotate(45deg);
 }
 
-.campo-libre__info:hover .campo-libre__tooltip,
-.campo-libre__info:focus-visible .campo-libre__tooltip,
 .campo-libre__info.campo-libre__info--visible .campo-libre__tooltip {
   opacity: 1;
   transform: translateY(0);

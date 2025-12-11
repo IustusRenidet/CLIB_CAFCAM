@@ -782,7 +782,6 @@ function crearIndicadorMetadatos(infoCampo) {
   };
   indicador.addEventListener('mouseenter', () => alternar(true));
   indicador.addEventListener('mouseleave', () => alternar(false));
-  indicador.addEventListener('focus', () => alternar(true));
   indicador.addEventListener('blur', () => alternar(false));
 
   return indicador;
