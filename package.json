@@ -22,8 +22,7 @@
   "build": {
     "asar": true,
     "asarUnpack": [
-      "**/*.node",
-      "public/**/*"
+      "**/*.node"
     ],
     "appId": "com.iconet.clib_llantas",
     "productName": "CLIB Ventas",

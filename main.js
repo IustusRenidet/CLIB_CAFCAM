@@ -1,10 +1,10 @@
-const { app, BrowserWindow } = require('electron');
-const { iniciarServidor, detenerServidor, PUERTO_SERVIDOR } = require('./server');
+const { app, BrowserWindow, dialog } = require('electron');
+const { iniciarServidor, detenerServidor } = require('./server');
 
 let ventanaPrincipal = null;
 
 async function crearVentana() {
-  await iniciarServidor();
+  const { puerto } = await iniciarServidor();
 
   ventanaPrincipal = new BrowserWindow({
     width: 1280,
@@ -19,7 +19,7 @@ async function crearVentana() {
     }
   });
 
-  await ventanaPrincipal.loadURL(`http://localhost:${PUERTO_SERVIDOR}`);
+  await ventanaPrincipal.loadURL(`http://localhost:${puerto}`);
 }
 
 app.whenReady().then(async () => {
@@ -27,6 +27,10 @@ app.whenReady().then(async () => {
     await crearVentana();
   } catch (error) {
     console.error('No fue posible iniciar la aplicación:', error);
+    dialog.showErrorBox(
+      'CLIB Ventas',
+      `${error?.message || error}\n\nLa instalación podría estar incompleta o el puerto está en uso. Intenta reinstalar o contacta a soporte.`
+    );
     app.quit();
   }
 

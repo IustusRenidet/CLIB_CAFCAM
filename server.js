@@ -5,11 +5,6 @@ const firebird = require('node-firebird');
 
 // Función para obtener la ruta correcta de archivos, manejando empaquetado asar
 function obtenerRutaRecurso(rutaRelativa) {
-  // Si __dirname contiene .asar, usa la versión desempaquetada
-  if (__dirname.includes('.asar')) {
-    const rutaBase = __dirname.replace('app.asar', 'app.asar.unpacked');
-    return path.join(rutaBase, rutaRelativa);
-  }
   return path.join(__dirname, rutaRelativa);
 }
 
@@ -130,7 +125,7 @@ const LONGITUD_MAXIMA_BUSQUEDA_GENERAL = 30;
 const LONGITUD_MAXIMA_CVE_DOC = 20;
 const LONGITUD_MAXIMA_CVE_CLIENTE = 10;
 const CONDICION_DOCUMENTO_VIGENTE = "TRIM(COALESCE(STATUS, '')) <> 'C'";
-const PUERTO_SERVIDOR = Number(process.env.PORT || 3001);
+const PUERTO_PREFERIDO = Number(process.env.PORT || 3001);
 const RUTA_BASE_DATOS = obtenerRutaBaseDatos();
 const CONFIGURACION_FIREBIRD = {
   host: process.env.FIREBIRD_HOST || '127.0.0.1',
@@ -147,6 +142,7 @@ const aplicacion = express();
 const cacheTablas = new Map();
 const cacheCamposTabla = new Map();
 let servidorHttp = null;
+let puertoServidor = PUERTO_PREFERIDO;
 
 aplicacion.disable('x-powered-by');
 aplicacion.use(express.json({ limit: '1mb' }));
@@ -330,7 +326,18 @@ aplicacion.use('/api', (req, res) => {
 });
 
 aplicacion.get('*', (req, res) => {
-  res.sendFile(obtenerRutaRecurso(path.join('public', 'index.html')));
+  const rutaIndex = obtenerRutaRecurso(path.join('public', 'index.html'));
+  res.sendFile(rutaIndex, (error) => {
+    if (!error) {
+      return;
+    }
+
+    console.error(`[UI] No fue posible servir index.html (${rutaIndex}).`, error);
+    res
+      .status(500)
+      .type('text/plain')
+      .send('La instalación de la aplicación está incompleta o dañada. Reinstálala o contacta a soporte.');
+  });
 });
 
 function asyncHandler(funcion) {
@@ -982,17 +989,40 @@ function extraerComponentesVersion(nombre) {
 
 function iniciarServidor() {
   if (servidorHttp) {
-    return Promise.resolve(servidorHttp);
+    return Promise.resolve({ servidor: servidorHttp, puerto: puertoServidor });
   }
-  return new Promise((resolve, reject) => {
-    const servidor = aplicacion.listen(PUERTO_SERVIDOR, '127.0.0.1', () => {
-      servidorHttp = servidor;
-      console.log(`Servidor iniciado en http://localhost:${PUERTO_SERVIDOR}`);
-      resolve(servidorHttp);
+
+  const rutaIndex = obtenerRutaRecurso(path.join('public', 'index.html'));
+  if (!fs.existsSync(rutaIndex)) {
+    return Promise.reject(
+      new Error(
+        `No se encontró el recurso requerido: public/index.html (${rutaIndex}). La instalación podría estar incompleta.`
+      )
+    );
+  }
+
+  function escucharEnPuerto(puerto) {
+    return new Promise((resolve, reject) => {
+      const servidor = aplicacion.listen(puerto, '127.0.0.1', () => {
+        servidorHttp = servidor;
+        puertoServidor = servidor.address().port;
+        console.log(`Servidor iniciado en http://localhost:${puertoServidor}`);
+        resolve({ servidor: servidorHttp, puerto: puertoServidor });
+      });
+      servidor.on('error', (error) => {
+        reject(error);
+      });
     });
-    servidor.on('error', (error) => {
-      reject(error);
-    });
+  }
+
+  return escucharEnPuerto(PUERTO_PREFERIDO).catch((error) => {
+    if (error && error.code === 'EADDRINUSE') {
+      console.warn(
+        `[Servidor] Puerto ${PUERTO_PREFERIDO} en uso. Se seleccionará un puerto libre automáticamente.`
+      );
+      return escucharEnPuerto(0);
+    }
+    throw error;
   });
 }
 
@@ -1019,4 +1049,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { iniciarServidor, detenerServidor, PUERTO_SERVIDOR };
+module.exports = { iniciarServidor, detenerServidor };
