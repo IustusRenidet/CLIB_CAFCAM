@@ -4,7 +4,7 @@ const { iniciarServidor, detenerServidor } = require('./server');
 let ventanaPrincipal = null;
 
 async function crearVentana() {
-  const { puerto } = await iniciarServidor();
+  const { puerto } = await iniciarServidor({ puertoPreferido: 0 });
 
   ventanaPrincipal = new BrowserWindow({
     width: 1280,

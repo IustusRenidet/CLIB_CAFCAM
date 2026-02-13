@@ -987,10 +987,16 @@ function extraerComponentesVersion(nombre) {
   return { mayor: Number.parseInt(coincidencia[1], 10), menor: Number.parseInt(coincidencia[2] || '0', 10) };
 }
 
-function iniciarServidor() {
+function iniciarServidor(opciones = {}) {
   if (servidorHttp) {
     return Promise.resolve({ servidor: servidorHttp, puerto: puertoServidor });
   }
+
+  const puertoSolicitado = Number.parseInt(opciones.puertoPreferido, 10);
+  const puertoPreferido =
+    Number.isInteger(puertoSolicitado) && puertoSolicitado >= 0 && puertoSolicitado <= 65535
+      ? puertoSolicitado
+      : PUERTO_PREFERIDO;
 
   const rutaIndex = obtenerRutaRecurso(path.join('public', 'index.html'));
   if (!fs.existsSync(rutaIndex)) {
@@ -1015,10 +1021,10 @@ function iniciarServidor() {
     });
   }
 
-  return escucharEnPuerto(PUERTO_PREFERIDO).catch((error) => {
-    if (error && error.code === 'EADDRINUSE') {
+  return escucharEnPuerto(puertoPreferido).catch((error) => {
+    if (error && error.code === 'EADDRINUSE' && puertoPreferido !== 0) {
       console.warn(
-        `[Servidor] Puerto ${PUERTO_PREFERIDO} en uso. Se seleccionará un puerto libre automáticamente.`
+        `[Servidor] Puerto ${puertoPreferido} en uso. Se seleccionará un puerto libre automáticamente.`
       );
       return escucharEnPuerto(0);
     }
