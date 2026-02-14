@@ -1,6 +1,6 @@
 {
   "name": "clib_cafcam",
-  "version": "1.0.4",
+  "version": "2.0.0",
   "description": "Campos libres de docs de ventas para CAF-CAM",
   "main": "main.js",
   "repository": {
