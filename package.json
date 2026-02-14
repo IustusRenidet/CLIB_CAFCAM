@@ -39,7 +39,8 @@
       {
         "provider": "github",
         "owner": "IustusRenidet",
-        "repo": "CLIB_CAFCAM"
+        "repo": "CLIB_CAFCAM",
+        "releaseType": "release"
       }
     ],
     "appId": "com.iconet.clib_cafcam",
