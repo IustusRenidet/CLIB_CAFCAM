@@ -1,8 +1,8 @@
 :root {
   /* Tono principal utilizado para resaltar botones y elementos interactivos. */
-  --color-azul: #1d4ed8;
+  --color-azul: #ea580c;
   /* Variante clara del azul para fondos degradados y resaltados suaves. */
-  --color-azul-suave: #e6ecff;
+  --color-azul-suave: #ffedd5;
   /* Color naranja que sirve como acento secundario para tarjetas informativas. */
   --color-naranja: #f97316;
   /* Matiz claro del naranja que suaviza los degradados secundarios. */
@@ -12,11 +12,11 @@
   /* Tono grisáceo para textos secundarios y etiquetas. */
   --color-texto-suave: #6b7280;
   /* Fondo general aplicado al body para diferenciarlo de los paneles. */
-  --color-fondo: #f4f7fb;
+  --color-fondo: #fff7ed;
   /* Color blanco puro utilizado en paneles y tarjetas. */
   --color-panel: #ffffff;
   /* Color neutro para bordes y divisiones ligeras. */
-  --color-borde: #d4dcf4;
+  --color-borde: #fed7aa;
 }
 
 *,
@@ -50,7 +50,7 @@ body {
   /* Esquinas redondeadas que dan sensación de tarjeta. */
   border-radius: 1.5rem;
   /* Sombra suave para separar visualmente del fondo. */
-  box-shadow: 0 18px 45px rgba(29, 78, 216, 0.08);
+  box-shadow: 0 18px 45px rgba(234, 88, 12, 0.08);
   /* Espaciado interno para que los elementos respiren. */
   padding: 2.5rem;
   /* Ancho fluido que se adapta al tamaño de la pantalla. */
@@ -102,11 +102,11 @@ body {
 }
 
 .app__header {
-  border: 1px solid rgba(191, 219, 254, 0.45);
-  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 50%, #1e40af 100%);
+  border: 1px solid rgba(253, 186, 116, 0.45);
+  background: linear-gradient(135deg, #ea580c 0%, #f97316 50%, #c2410c 100%);
   border-radius: 1.1rem;
   padding: clamp(1.3rem, 2vw, 2rem);
-  box-shadow: 0 14px 35px rgba(29, 78, 216, 0.32);
+  box-shadow: 0 14px 35px rgba(234, 88, 12, 0.32);
   position: relative;
   overflow: hidden;
 }
@@ -124,7 +124,7 @@ body {
 }
 
 .app__badge {
-  color: #eff6ff;
+  color: #fff7ed;
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.24em;
@@ -142,7 +142,7 @@ body {
 }
 
 .app__subtitle {
-  color: #dbeafe;
+  color: #ffedd5;
   margin: 0;
   max-width: none;
   font-size: 1.02rem;
@@ -188,7 +188,7 @@ body {
   /* Borde azul que indica el foco activo del control. */
   border-color: var(--color-azul);
   /* Sombra tipo halo para accesibilidad visual. */
-  box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.15);
+  box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.15);
 }
 
 .summary-card {
@@ -279,7 +279,7 @@ body {
 .panel-detalle__volver:hover,
 .panel-detalle__volver:focus-visible {
   border-color: var(--color-azul);
-  background-color: rgba(29, 78, 216, 0.08);
+  background-color: rgba(234, 88, 12, 0.08);
 }
 
 @media (max-width: 960px) {
@@ -399,7 +399,7 @@ body {
 
 .tabla-compras tbody tr:hover {
   /* Resaltado azul tenue al pasar el cursor sobre una fila. */
-  background-color: rgba(29, 78, 216, 0.08);
+  background-color: rgba(234, 88, 12, 0.08);
 }
 
 .tabla-compras tbody tr.table-active {
@@ -419,7 +419,7 @@ body {
 
 .tabla-compras tbody td {
   /* Línea divisoria sutil que mejora la lectura cuando hay pocas filas. */
-  border-bottom: 1px solid rgba(212, 220, 244, 0.7);
+  border-bottom: 1px solid rgba(254, 215, 170, 0.7);
 }
 
 .tabla-compras tbody tr:last-child td {
@@ -463,13 +463,13 @@ body {
 
 .detalle-resaltado {
   /* Fondo azul muy claro que resalta el panel respecto al resto. */
-  background-color: rgba(29, 78, 216, 0.06);
+  background-color: rgba(234, 88, 12, 0.06);
   /* Esquinas suavizadas en consonancia con el resto del diseño. */
   border-radius: 1rem;
   /* Relleno generoso para facilitar la lectura de cada bloque. */
   padding: 1.5rem;
   /* Borde tenue que refuerza la separación visual. */
-  border: 1px solid rgba(29, 78, 216, 0.12);
+  border: 1px solid rgba(234, 88, 12, 0.12);
   /* Grid interno para alinear los pares etiqueta-valor. */
   display: grid;
   gap: 1.25rem;
@@ -504,9 +504,9 @@ body {
 .detalle-resumen-serie {
   margin-top: 1.5rem;
   padding: 1.5rem;
-  border: 1px dashed rgba(29, 78, 216, 0.25);
+  border: 1px dashed rgba(234, 88, 12, 0.25);
   border-radius: 1rem;
-  background: linear-gradient(135deg, rgba(29, 78, 216, 0.08), rgba(29, 78, 216, 0.02));
+  background: linear-gradient(135deg, rgba(234, 88, 12, 0.08), rgba(234, 88, 12, 0.02));
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -539,7 +539,7 @@ body {
 .detalle-resumen-serie__seccion + .detalle-resumen-serie__seccion {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px dashed rgba(29, 78, 216, 0.2);
+  border-top: 1px dashed rgba(234, 88, 12, 0.2);
 }
 
 .detalle-resumen-serie__subtitulo {
@@ -646,7 +646,7 @@ body {
 
 .boton-primario:hover,
 .boton-primario:focus {
-  background-color: #163fa5;
+  background-color: #c2410c;
 }
 
 .boton-secundario {
@@ -693,7 +693,7 @@ body {
 .tabla-documentos td,
 .tabla-documentos th {
   padding: 0.85rem 1rem;
-  border-bottom: 1px solid rgba(212, 220, 244, 0.6);
+  border-bottom: 1px solid rgba(254, 215, 170, 0.6);
 }
 
 .tabla-documentos tbody tr:last-child td {
@@ -701,7 +701,7 @@ body {
 }
 
 .tabla-documentos tbody tr:hover {
-  background-color: rgba(29, 78, 216, 0.08);
+  background-color: rgba(234, 88, 12, 0.08);
 }
 
 .mensaje-vacio {
@@ -786,7 +786,7 @@ body {
   justify-content: center;
   font-size: 0.95rem;
   font-weight: 700;
-  box-shadow: 0 8px 18px rgba(29, 78, 216, 0.3);
+  box-shadow: 0 8px 18px rgba(234, 88, 12, 0.3);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   position: relative;
   flex-shrink: 0;
@@ -796,11 +796,11 @@ body {
 .campo-libre__info:focus-visible,
 .campo-libre__info.campo-libre__info--visible {
   transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgba(29, 78, 216, 0.4);
+  box-shadow: 0 10px 22px rgba(234, 88, 12, 0.4);
 }
 
 .campo-libre__info:focus-visible {
-  outline: 2px solid rgba(29, 78, 216, 0.55);
+  outline: 2px solid rgba(234, 88, 12, 0.55);
   outline-offset: 2px;
 }
 
@@ -941,7 +941,7 @@ body {
 }
 
 .partida-campos__encabezado:hover {
-  background-color: rgba(29, 78, 216, 0.08);
+  background-color: rgba(234, 88, 12, 0.08);
 }
 
 .partida-campos__encabezado:focus-visible {
@@ -972,8 +972,8 @@ body {
 }
 
 .partida-campos--expandida .partida-campos__encabezado {
-  border-color: rgba(29, 78, 216, 0.35);
-  background-color: rgba(29, 78, 216, 0.08);
+  border-color: rgba(234, 88, 12, 0.35);
+  background-color: rgba(234, 88, 12, 0.08);
 }
 
 .partida-campos--expandida .partida-campos__icono {

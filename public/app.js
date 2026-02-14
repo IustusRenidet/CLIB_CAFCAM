@@ -33,11 +33,9 @@ const elementos = {
 };
 
 const REGEX_CAMPO_LIBRE = /^CAMPLIB\d+$/i;
-const EMPRESA_POR_DEFECTO = '01';
-const EMPRESAS_PREDETERMINADAS = [
-  { clave: '01', nombre: 'Llantas y Multiservicios' },
-  { clave: '02', nombre: 'CAFCAM' }
-];
+const EMPRESA_POR_DEFECTO = '02';
+const EMPRESAS_PREDETERMINADAS = [{ clave: '02', nombre: 'CAFCAM' }];
+const CLAVES_EMPRESA_PERMITIDAS = new Set(EMPRESAS_PREDETERMINADAS.map((empresa) => empresa.clave));
 const MENSAJE_CAMBIOS_PENDIENTES = 'Tienes cambios sin guardar. Si continúas, no se aplicarán.';
 
 const plantillas = {
@@ -109,6 +107,8 @@ function poblarEmpresas(empresas = [], empresaPorDefecto = EMPRESA_POR_DEFECTO) 
     elementos.empresa.appendChild(opcion);
   });
   elementos.empresa.value = fuente.some((empresa) => empresa.clave === claveDefecto) ? claveDefecto : fuente[0].clave;
+  elementos.empresa.disabled = fuente.length <= 1;
+  elementos.empresa.setAttribute('aria-disabled', elementos.empresa.disabled ? 'true' : 'false');
   actualizarEmpresaActivaEncabezado();
 }
 
@@ -120,7 +120,7 @@ function normalizarListaEmpresas(lista = []) {
   const claves = new Set();
   lista.forEach((empresa) => {
     const clave = normalizarClaveEmpresa(empresa && empresa.clave);
-    if (!clave || claves.has(clave)) {
+    if (!clave || !CLAVES_EMPRESA_PERMITIDAS.has(clave) || claves.has(clave)) {
       return;
     }
     const nombre =
@@ -136,7 +136,8 @@ function normalizarClaveEmpresa(valor) {
   if (Number.isNaN(numero) || numero < 1) {
     return '';
   }
-  return numero.toString().padStart(2, '0');
+  const clave = numero.toString().padStart(2, '0');
+  return CLAVES_EMPRESA_PERMITIDAS.has(clave) ? clave : '';
 }
 
 function obtenerEmpresaSeleccionada() {
@@ -161,9 +162,8 @@ function actualizarEmpresaActivaEncabezado() {
   if (!elementos.empresaActivaEncabezado) {
     return;
   }
-  const claveEmpresa = obtenerEmpresaSeleccionada();
   if (elementos.app) {
-    elementos.app.classList.toggle('app--tema-llantas', claveEmpresa === '01');
+    elementos.app.classList.remove('app--tema-llantas');
   }
   const nombre = obtenerNombreEmpresaSeleccionada() || 'Empresa no definida';
   elementos.empresaActivaEncabezado.textContent = `${nombre}`;
