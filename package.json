@@ -17,7 +17,8 @@
     "release:major": "npm version major -m \"chore(release): %s\"",
     "release:push": "git push && git push --follow-tags",
     "publish:local": "npm run dist",
-    "publish:github": "electron-builder --win --publish always"
+    "publish:github": "electron-builder --win --publish always",
+    "publish": "npm run publish:github"
   },
   "dependencies": {
     "bootstrap": "^5.3.3",
