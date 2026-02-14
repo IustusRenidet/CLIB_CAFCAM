@@ -1,11 +1,11 @@
 {
-  "name": "clib_llantas",
+  "name": "clib_cafcam",
   "version": "1.0.4",
-  "description": "Campos libres de docs de ventas para Llantas",
+  "description": "Campos libres de docs de ventas para CAF-CAM",
   "main": "main.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/IustusRenidet/CLIB_Llantas.git"
+    "url": "https://github.com/IustusRenidet/CLIB_CAFCAM.git"
   },
   "author": "Rintel Gatachi <iustusrenidet@gmail.com>",
   "scripts": {
@@ -38,11 +38,11 @@
       {
         "provider": "github",
         "owner": "IustusRenidet",
-        "repo": "CLIB_Llantas"
+        "repo": "CLIB_CAFCAM"
       }
     ],
-    "appId": "com.iconet.clib_llantas",
-    "productName": "CLIB Ventas",
+    "appId": "com.iconet.clib_cafcam",
+    "productName": "CLIB CAF-CAM",
     "directories": {
       "output": "dist"
     },

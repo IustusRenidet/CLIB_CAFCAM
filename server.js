@@ -125,11 +125,11 @@ const LONGITUD_MAXIMA_BUSQUEDA_GENERAL = 30;
 const LONGITUD_MAXIMA_CVE_DOC = 20;
 const LONGITUD_MAXIMA_CVE_CLIENTE = 10;
 const CONDICION_DOCUMENTO_VIGENTE = "TRIM(COALESCE(STATUS, '')) <> 'C'";
-const EMPRESA_POR_DEFECTO = '01';
+const EMPRESA_POR_DEFECTO = '02';
 const EMPRESAS_DISPONIBLES = [
-  { clave: '01', nombre: 'Llantas y Multiservicios' },
   { clave: '02', nombre: 'CAFCAM' }
 ];
+const CLAVES_EMPRESA_DISPONIBLES = new Set(EMPRESAS_DISPONIBLES.map((empresa) => empresa.clave));
 const PUERTO_PREFERIDO = Number(process.env.PORT || 3001);
 const CONFIGURACION_FIREBIRD_BASE = {
   lowercase_keys: false,
@@ -393,7 +393,11 @@ function normalizarEmpresa(valor) {
   if (Number.isNaN(numero) || numero < 1) {
     return EMPRESA_POR_DEFECTO;
   }
-  return numero.toString().padStart(2, '0');
+  const empresaNormalizada = numero.toString().padStart(2, '0');
+  if (!CLAVES_EMPRESA_DISPONIBLES.has(empresaNormalizada)) {
+    return EMPRESA_POR_DEFECTO;
+  }
+  return empresaNormalizada;
 }
 
 function normalizarClaveDocumento(valor) {
