@@ -121,15 +121,17 @@ const TODAS_IDTABLAS_PARTIDAS = crearSetIdTablasPartidas();
 
 const PREFIJO_CAMPOS_LIBRES = 'CAMPLIB';
 const REGEX_CAMPO_LIBRE = /^CAMPLIB\d+$/;
+const REGEX_FECHA_ISO = /^(\d{4})-(\d{2})-(\d{2})$/;
+const REGEX_HORA_ISO = /^(\d{2}):(\d{2})(?::(\d{2}))?$/;
+const REGEX_FECHA_HORA_ISO = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/;
 const LONGITUD_MAXIMA_BUSQUEDA_GENERAL = 30;
 const LONGITUD_MAXIMA_CVE_DOC = 20;
 const LONGITUD_MAXIMA_CVE_CLIENTE = 10;
 const CONDICION_DOCUMENTO_VIGENTE = "TRIM(COALESCE(STATUS, '')) <> 'C'";
 const EMPRESA_POR_DEFECTO = '02';
 const EMPRESAS_DISPONIBLES = [
-  { clave: '02', nombre: 'CAFCAM' }
+  { clave: EMPRESA_POR_DEFECTO, nombre: 'CAF-CAM' }
 ];
-const CLAVES_EMPRESA_DISPONIBLES = new Set(EMPRESAS_DISPONIBLES.map((empresa) => empresa.clave));
 const PUERTO_PREFERIDO = Number(process.env.PORT || 3001);
 const CONFIGURACION_FIREBIRD_BASE = {
   lowercase_keys: false,
@@ -236,7 +238,7 @@ aplicacion.get('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
       ? await obtenerMetadatosCamposLibres(db, tablaClib, camposDisponiblesDocumento)
       : {};
     const camposLibres = camposDisponiblesDocumento.length
-      ? await obtenerCamposLibres(db, tablaClib, claveDocumento, camposDisponiblesDocumento)
+      ? await obtenerCamposLibres(db, tablaClib, claveDocumento, camposDisponiblesDocumento, detalleCamposDocumento)
       : {};
     const etiquetas = await obtenerEtiquetasCampos(db, tablaParametros, definicion, empresa);
     const {
@@ -291,11 +293,11 @@ aplicacion.put('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
     if (existeClib) {
       const camposDisponiblesDocumento = await obtenerCamposDisponiblesEnTabla(db, tablaClib);
       if (camposDisponiblesDocumento.length) {
-        const longitudesDocumento = await obtenerLongitudesCamposLibres(db, tablaClib, camposDisponiblesDocumento);
+        const detalleCamposDocumento = await obtenerMetadatosCamposLibres(db, tablaClib, camposDisponiblesDocumento);
         const camposNormalizadosDocumento = normalizarCamposLibres(
           camposRecibidos,
           camposDisponiblesDocumento,
-          longitudesDocumento
+          detalleCamposDocumento
         );
         await guardarCamposLibres(
           db,
@@ -315,8 +317,8 @@ aplicacion.put('/api/documentos/:tipo/:empresa/:clave', asyncHandler(async (req,
       if (!camposDisponiblesPartidas.length) {
         throw new AplicacionError('No existen campos libres configurados para las partidas en esta empresa.', 404);
       }
-      const longitudesPartidas = await obtenerLongitudesCamposLibres(db, tablaPartidasClib, camposDisponiblesPartidas);
-      const partidasNormalizadas = normalizarPartidas(partidasRecibidas, camposDisponiblesPartidas, longitudesPartidas);
+      const detalleCamposPartidas = await obtenerMetadatosCamposLibres(db, tablaPartidasClib, camposDisponiblesPartidas);
+      const partidasNormalizadas = normalizarPartidas(partidasRecibidas, camposDisponiblesPartidas, detalleCamposPartidas);
       await guardarCamposLibresPartidas(
         db,
         tablaPartidasClib,
@@ -389,15 +391,7 @@ function obtenerDefinicionTipo(tipo) {
 }
 
 function normalizarEmpresa(valor) {
-  const numero = Number.parseInt(valor, 10);
-  if (Number.isNaN(numero) || numero < 1) {
-    return EMPRESA_POR_DEFECTO;
-  }
-  const empresaNormalizada = numero.toString().padStart(2, '0');
-  if (!CLAVES_EMPRESA_DISPONIBLES.has(empresaNormalizada)) {
-    return EMPRESA_POR_DEFECTO;
-  }
-  return empresaNormalizada;
+  return EMPRESA_POR_DEFECTO;
 }
 
 function normalizarClaveDocumento(valor) {
@@ -423,6 +417,208 @@ function formatearFecha(valor) {
     return null;
   }
   return fecha.toISOString();
+}
+
+function formatearValorCampoLibre(valor, infoCampo = null) {
+  if (valor === null || valor === undefined) {
+    return '';
+  }
+  const tipoCampo = normalizarTipoDatoCampoLibre(infoCampo && infoCampo.tipo);
+  if (tipoCampo === 'fecha') {
+    const fecha = convertirValorATipoTemporalCampoLibre(valor, tipoCampo);
+    return fecha ? formatearFechaIsoLocal(fecha) : '';
+  }
+  if (tipoCampo === 'hora') {
+    const fecha = convertirValorATipoTemporalCampoLibre(valor, tipoCampo);
+    return fecha ? formatearHoraIsoLocal(fecha) : '';
+  }
+  if (tipoCampo === 'fecha_hora') {
+    const fecha = convertirValorATipoTemporalCampoLibre(valor, tipoCampo);
+    return fecha ? `${formatearFechaIsoLocal(fecha)}T${formatearHoraIsoLocal(fecha)}` : '';
+  }
+  return formatearTexto(valor);
+}
+
+function normalizarTipoDatoCampoLibre(tipo) {
+  const texto = formatearTexto(tipo).toLowerCase();
+  if (texto === 'fecha') {
+    return 'fecha';
+  }
+  if (texto === 'hora') {
+    return 'hora';
+  }
+  if (texto === 'fecha y hora') {
+    return 'fecha_hora';
+  }
+  return 'dato';
+}
+
+function normalizarValorTemporalCampoLibre(valor, tipoCampo, campo) {
+  const fecha = convertirValorATipoTemporalCampoLibre(valor, tipoCampo);
+  if (fecha) {
+    return fecha;
+  }
+  const formatoEsperado =
+    tipoCampo === 'fecha'
+      ? 'AAAA-MM-DD'
+      : tipoCampo === 'hora'
+        ? 'HH:mm o HH:mm:ss'
+        : 'AAAA-MM-DDTHH:mm o AAAA-MM-DDTHH:mm:ss';
+  throw new AplicacionError(`El campo ${campo} debe tener formato ${formatoEsperado}.`, 400);
+}
+
+function convertirValorATipoTemporalCampoLibre(valor, tipoCampo) {
+  const fechaDirecta = valor instanceof Date ? valor : null;
+  if (fechaDirecta && !Number.isNaN(fechaDirecta.getTime())) {
+    return normalizarFechaSegunTipoCampo(fechaDirecta, tipoCampo);
+  }
+
+  const texto = formatearTexto(valor);
+  if (!texto) {
+    return null;
+  }
+
+  let fecha = null;
+  if (tipoCampo === 'fecha') {
+    fecha = parsearTextoFechaIso(texto);
+    if (!fecha) {
+      const fechaHora = parsearTextoFechaHoraIso(texto);
+      if (fechaHora) {
+        fecha = construirFechaLocalValida(
+          fechaHora.getFullYear(),
+          fechaHora.getMonth() + 1,
+          fechaHora.getDate(),
+          0,
+          0,
+          0
+        );
+      }
+    }
+  } else if (tipoCampo === 'hora') {
+    fecha = parsearTextoHoraIso(texto);
+  } else if (tipoCampo === 'fecha_hora') {
+    fecha = parsearTextoFechaHoraIso(texto);
+    if (!fecha) {
+      const fechaBase = parsearTextoFechaIso(texto);
+      if (fechaBase) {
+        fecha = construirFechaLocalValida(
+          fechaBase.getFullYear(),
+          fechaBase.getMonth() + 1,
+          fechaBase.getDate(),
+          0,
+          0,
+          0
+        );
+      }
+    }
+  }
+
+  if (fecha) {
+    return normalizarFechaSegunTipoCampo(fecha, tipoCampo);
+  }
+
+  const alternativa = new Date(texto);
+  if (Number.isNaN(alternativa.getTime())) {
+    return null;
+  }
+  return normalizarFechaSegunTipoCampo(alternativa, tipoCampo);
+}
+
+function normalizarFechaSegunTipoCampo(fecha, tipoCampo) {
+  if (!(fecha instanceof Date) || Number.isNaN(fecha.getTime())) {
+    return null;
+  }
+  if (tipoCampo === 'fecha') {
+    return construirFechaLocalValida(fecha.getFullYear(), fecha.getMonth() + 1, fecha.getDate(), 0, 0, 0);
+  }
+  if (tipoCampo === 'hora') {
+    return construirFechaLocalValida(1970, 1, 1, fecha.getHours(), fecha.getMinutes(), fecha.getSeconds());
+  }
+  if (tipoCampo === 'fecha_hora') {
+    return construirFechaLocalValida(
+      fecha.getFullYear(),
+      fecha.getMonth() + 1,
+      fecha.getDate(),
+      fecha.getHours(),
+      fecha.getMinutes(),
+      fecha.getSeconds()
+    );
+  }
+  return fecha;
+}
+
+function parsearTextoFechaIso(texto) {
+  const coincidencia = REGEX_FECHA_ISO.exec(texto);
+  if (!coincidencia) {
+    return null;
+  }
+  return construirFechaLocalValida(
+    Number.parseInt(coincidencia[1], 10),
+    Number.parseInt(coincidencia[2], 10),
+    Number.parseInt(coincidencia[3], 10),
+    0,
+    0,
+    0
+  );
+}
+
+function parsearTextoHoraIso(texto) {
+  const coincidencia = REGEX_HORA_ISO.exec(texto);
+  if (!coincidencia) {
+    return null;
+  }
+  return construirFechaLocalValida(
+    1970,
+    1,
+    1,
+    Number.parseInt(coincidencia[1], 10),
+    Number.parseInt(coincidencia[2], 10),
+    Number.parseInt(coincidencia[3] || '0', 10)
+  );
+}
+
+function parsearTextoFechaHoraIso(texto) {
+  const coincidencia = REGEX_FECHA_HORA_ISO.exec(texto);
+  if (!coincidencia) {
+    return null;
+  }
+  return construirFechaLocalValida(
+    Number.parseInt(coincidencia[1], 10),
+    Number.parseInt(coincidencia[2], 10),
+    Number.parseInt(coincidencia[3], 10),
+    Number.parseInt(coincidencia[4], 10),
+    Number.parseInt(coincidencia[5], 10),
+    Number.parseInt(coincidencia[6] || '0', 10)
+  );
+}
+
+function construirFechaLocalValida(anio, mes, dia, hora = 0, minuto = 0, segundo = 0) {
+  const fecha = new Date(anio, mes - 1, dia, hora, minuto, segundo, 0);
+  if (
+    fecha.getFullYear() !== anio ||
+    fecha.getMonth() !== mes - 1 ||
+    fecha.getDate() !== dia ||
+    fecha.getHours() !== hora ||
+    fecha.getMinutes() !== minuto ||
+    fecha.getSeconds() !== segundo
+  ) {
+    return null;
+  }
+  return fecha;
+}
+
+function formatearFechaIsoLocal(fecha) {
+  return `${fecha.getFullYear()}-${rellenarDosDigitos(fecha.getMonth() + 1)}-${rellenarDosDigitos(fecha.getDate())}`;
+}
+
+function formatearHoraIsoLocal(fecha) {
+  return `${rellenarDosDigitos(fecha.getHours())}:${rellenarDosDigitos(fecha.getMinutes())}:${rellenarDosDigitos(
+    fecha.getSeconds()
+  )}`;
+}
+
+function rellenarDosDigitos(valor) {
+  return String(valor).padStart(2, '0');
 }
 
 function obtenerConfiguracionFirebird(empresa) {
@@ -687,7 +883,7 @@ async function obtenerDocumento(db, tablaDocumentos, claveDocumento) {
   };
 }
 
-async function obtenerCamposLibres(db, tablaClib, claveDocumento, camposDisponibles = []) {
+async function obtenerCamposLibres(db, tablaClib, claveDocumento, camposDisponibles = [], detalleCampos = {}) {
   if (!camposDisponibles.length) {
     return {};
   }
@@ -695,7 +891,8 @@ async function obtenerCamposLibres(db, tablaClib, claveDocumento, camposDisponib
   const registros = await ejecutarConsulta(db, consulta, [claveDocumento.toUpperCase()]);
   const resultado = {};
   camposDisponibles.forEach((campo) => {
-    resultado[campo] = registros.length ? formatearTexto(registros[0][campo]) : '';
+    const valor = registros.length ? registros[0][campo] : null;
+    resultado[campo] = formatearValorCampoLibre(valor, detalleCampos[campo]);
   });
   return resultado;
 }
@@ -775,7 +972,7 @@ async function obtenerPartidas(db, tablaPartidas, tablaPartidasClib, claveDocume
       const numero = Number.parseInt(registro.NUM_PART, 10) || 0;
       const campos = {};
       camposDisponiblesPartidas.forEach((campo) => {
-        campos[campo] = formatearTexto(registro[campo]);
+        campos[campo] = formatearValorCampoLibre(registro[campo], detalleCamposPartidas[campo]);
       });
       mapaCampos.set(numero, campos);
     });
@@ -810,21 +1007,33 @@ async function guardarCamposLibres(db, tablaClib, claveDocumento, campos, column
   await ejecutarConsulta(db, consultaInsercion, [claveDocumento.toUpperCase(), ...valores]);
 }
 
-function normalizarCamposLibres(camposOrigen = {}, camposDisponibles = [], longitudes = new Map()) {
+function normalizarCamposLibres(camposOrigen = {}, camposDisponibles = [], detalleCampos = {}) {
   const resultado = {};
   if (!camposDisponibles.length) {
     return resultado;
   }
   camposDisponibles.forEach((campo) => {
+    const infoCampo = detalleCampos && typeof detalleCampos === 'object' ? detalleCampos[campo] || null : null;
+    const tipoCampo = normalizarTipoDatoCampoLibre(infoCampo && infoCampo.tipo);
+    const longitudCampo =
+      infoCampo && Number.isFinite(infoCampo.longitud) && infoCampo.longitud > 0 ? infoCampo.longitud : null;
     const valor = camposOrigen && Object.prototype.hasOwnProperty.call(camposOrigen, campo) ? camposOrigen[campo] : '';
     const texto = valor === undefined || valor === null ? '' : String(valor).trim();
-    const textoLimitado = limitarLongitudCampoLibre(texto, longitudes.get(campo));
+    if (!texto) {
+      resultado[campo] = null;
+      return;
+    }
+    if (tipoCampo === 'fecha' || tipoCampo === 'hora' || tipoCampo === 'fecha_hora') {
+      resultado[campo] = normalizarValorTemporalCampoLibre(texto, tipoCampo, campo);
+      return;
+    }
+    const textoLimitado = limitarLongitudCampoLibre(texto, longitudCampo);
     resultado[campo] = textoLimitado ? textoLimitado : null;
   });
   return resultado;
 }
 
-function normalizarPartidas(partidas, camposDisponibles = [], longitudes = new Map()) {
+function normalizarPartidas(partidas, camposDisponibles = [], detalleCampos = {}) {
   if (!Array.isArray(partidas) || !camposDisponibles.length) {
     return [];
   }
@@ -838,7 +1047,7 @@ function normalizarPartidas(partidas, camposDisponibles = [], longitudes = new M
       return;
     }
     const camposOrigen = partida.campos && typeof partida.campos === 'object' ? partida.campos : {};
-    const campos = normalizarCamposLibres(camposOrigen, camposDisponibles, longitudes);
+    const campos = normalizarCamposLibres(camposOrigen, camposDisponibles, detalleCampos);
     mapa.set(numero, { numero, campos });
   });
   return Array.from(mapa.values());

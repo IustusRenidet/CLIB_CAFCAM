@@ -33,9 +33,13 @@ const elementos = {
 };
 
 const REGEX_CAMPO_LIBRE = /^CAMPLIB\d+$/i;
+const REGEX_FECHA_ISO = /^(\d{4})-(\d{2})-(\d{2})$/;
+const REGEX_HORA_ISO = /^(\d{2}):(\d{2})(?::(\d{2}))?$/;
+const REGEX_FECHA_HORA_ISO = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/;
 const EMPRESA_POR_DEFECTO = '02';
-const EMPRESAS_PREDETERMINADAS = [{ clave: '02', nombre: 'CAFCAM' }];
-const CLAVES_EMPRESA_PERMITIDAS = new Set(EMPRESAS_PREDETERMINADAS.map((empresa) => empresa.clave));
+const EMPRESAS_PREDETERMINADAS = [
+  { clave: EMPRESA_POR_DEFECTO, nombre: 'CAF-CAM' }
+];
 const MENSAJE_CAMBIOS_PENDIENTES = 'Tienes cambios sin guardar. Si continúas, no se aplicarán.';
 
 const plantillas = {
@@ -96,7 +100,8 @@ function poblarEmpresas(empresas = [], empresaPorDefecto = EMPRESA_POR_DEFECTO) 
     return;
   }
   const empresasNormalizadas = normalizarListaEmpresas(empresas);
-  const fuente = empresasNormalizadas.length ? empresasNormalizadas : EMPRESAS_PREDETERMINADAS;
+  const fuenteFiltrada = empresasNormalizadas.filter((empresa) => empresa.clave === EMPRESA_POR_DEFECTO);
+  const fuente = fuenteFiltrada.length ? fuenteFiltrada : EMPRESAS_PREDETERMINADAS;
   const claveDefecto = normalizarClaveEmpresa(empresaPorDefecto) || fuente[0].clave;
 
   elementos.empresa.innerHTML = '';
@@ -107,8 +112,7 @@ function poblarEmpresas(empresas = [], empresaPorDefecto = EMPRESA_POR_DEFECTO) 
     elementos.empresa.appendChild(opcion);
   });
   elementos.empresa.value = fuente.some((empresa) => empresa.clave === claveDefecto) ? claveDefecto : fuente[0].clave;
-  elementos.empresa.disabled = fuente.length <= 1;
-  elementos.empresa.setAttribute('aria-disabled', elementos.empresa.disabled ? 'true' : 'false');
+  elementos.empresa.disabled = true;
   actualizarEmpresaActivaEncabezado();
 }
 
@@ -120,7 +124,7 @@ function normalizarListaEmpresas(lista = []) {
   const claves = new Set();
   lista.forEach((empresa) => {
     const clave = normalizarClaveEmpresa(empresa && empresa.clave);
-    if (!clave || !CLAVES_EMPRESA_PERMITIDAS.has(clave) || claves.has(clave)) {
+    if (!clave || claves.has(clave)) {
       return;
     }
     const nombre =
@@ -136,15 +140,11 @@ function normalizarClaveEmpresa(valor) {
   if (Number.isNaN(numero) || numero < 1) {
     return '';
   }
-  const clave = numero.toString().padStart(2, '0');
-  return CLAVES_EMPRESA_PERMITIDAS.has(clave) ? clave : '';
+  return numero.toString().padStart(2, '0');
 }
 
 function obtenerEmpresaSeleccionada() {
-  if (!elementos.empresa) {
-    return EMPRESA_POR_DEFECTO;
-  }
-  return normalizarClaveEmpresa(elementos.empresa.value) || EMPRESA_POR_DEFECTO;
+  return EMPRESA_POR_DEFECTO;
 }
 
 function obtenerNombreEmpresaSeleccionada() {
@@ -162,8 +162,9 @@ function actualizarEmpresaActivaEncabezado() {
   if (!elementos.empresaActivaEncabezado) {
     return;
   }
+  const claveEmpresa = obtenerEmpresaSeleccionada();
   if (elementos.app) {
-    elementos.app.classList.remove('app--tema-llantas');
+    elementos.app.classList.toggle('app--tema-llantas', claveEmpresa === '02');
   }
   const nombre = obtenerNombreEmpresaSeleccionada() || 'Empresa no definida';
   elementos.empresaActivaEncabezado.textContent = `${nombre}`;
@@ -311,9 +312,8 @@ function pintarCamposLibres(campos = {}) {
     campo.appendChild(encabezado);
 
     const entrada = document.createElement('input');
-    entrada.type = 'text';
-    entrada.value = campos[clave] || '';
     entrada.dataset.claveCampo = clave;
+    configurarInputCampoLibre(entrada, infoCampo, campos[clave] || '');
     aplicarMetadatosAlInput(entrada, infoCampo);
     entrada.addEventListener('input', marcarCambiosPendientes);
     campo.appendChild(entrada);
@@ -390,10 +390,9 @@ function pintarCamposLibresPartidas(partidas = []) {
       campo.appendChild(encabezadoCampo);
 
       const input = document.createElement('input');
-      input.type = 'text';
-      input.value = partida.camposLibres && partida.camposLibres[clave] ? partida.camposLibres[clave] : '';
       input.dataset.claveCampo = clave;
       input.dataset.numeroPartida = partida.numero;
+      configurarInputCampoLibre(input, infoCampo, partida.camposLibres && partida.camposLibres[clave] ? partida.camposLibres[clave] : '');
       aplicarMetadatosAlInput(input, infoCampo);
       input.addEventListener('input', marcarCambiosPendientes);
       campo.appendChild(input);
@@ -703,7 +702,7 @@ async function guardarCampos(evento) {
 
   const campos = {};
   elementos.contenedorCampos.querySelectorAll('[data-clave-campo]').forEach((input) => {
-    campos[input.dataset.claveCampo] = input.value.trim();
+    campos[input.dataset.claveCampo] = normalizarValorInputParaGuardado(input);
   });
 
   const partidas = [];
@@ -719,7 +718,7 @@ async function guardarCampos(evento) {
       const camposPartida = {};
       // Busca inputs dentro de este contenedor específico
       contenedor.querySelectorAll('input[data-clave-campo]').forEach((input) => {
-        camposPartida[input.dataset.claveCampo] = input.value.trim();
+        camposPartida[input.dataset.claveCampo] = normalizarValorInputParaGuardado(input);
       });
 
       partidas.push({ numero, campos: camposPartida });
@@ -848,6 +847,161 @@ function normalizarCamposDisponibles(lista) {
   return campos;
 }
 
+function normalizarTipoDatoCampoLibre(infoCampo) {
+  const tipoOrigen = infoCampo && typeof infoCampo === 'object' ? infoCampo.tipo : infoCampo;
+  const tipo = (tipoOrigen || '').toString().trim().toLowerCase();
+  if (tipo === 'fecha') {
+    return 'fecha';
+  }
+  if (tipo === 'hora') {
+    return 'hora';
+  }
+  if (tipo === 'fecha y hora') {
+    return 'fecha_hora';
+  }
+  return 'dato';
+}
+
+function configurarInputCampoLibre(elemento, infoCampo, valorInicial = '') {
+  if (!elemento) {
+    return;
+  }
+  const tipoCampo = normalizarTipoDatoCampoLibre(infoCampo);
+  elemento.dataset.tipoCampo = tipoCampo;
+  elemento.removeAttribute('step');
+
+  if (tipoCampo === 'fecha') {
+    elemento.type = 'date';
+    elemento.value = normalizarValorFechaParaInput(valorInicial);
+    return;
+  }
+  if (tipoCampo === 'hora') {
+    elemento.type = 'time';
+    elemento.step = '1';
+    elemento.value = normalizarValorHoraParaInput(valorInicial);
+    return;
+  }
+  if (tipoCampo === 'fecha_hora') {
+    elemento.type = 'datetime-local';
+    elemento.step = '1';
+    elemento.value = normalizarValorFechaHoraParaInput(valorInicial);
+    return;
+  }
+  elemento.type = 'text';
+  elemento.value = valorInicial === null || valorInicial === undefined ? '' : valorInicial.toString();
+}
+
+function normalizarValorInputParaGuardado(input) {
+  if (!input) {
+    return '';
+  }
+  const valor = input.value === null || input.value === undefined ? '' : input.value.toString().trim();
+  if (!valor) {
+    return '';
+  }
+  const tipoCampo = normalizarTipoDatoCampoLibre(input.dataset ? input.dataset.tipoCampo : '');
+  if (tipoCampo === 'fecha') {
+    return normalizarValorFechaParaInput(valor);
+  }
+  if (tipoCampo === 'hora') {
+    return normalizarValorHoraParaInput(valor);
+  }
+  if (tipoCampo === 'fecha_hora') {
+    return normalizarValorFechaHoraParaInput(valor);
+  }
+  return valor;
+}
+
+function normalizarValorFechaParaInput(valor) {
+  const texto = (valor || '').toString().trim();
+  if (!texto) {
+    return '';
+  }
+  const fechaIso = REGEX_FECHA_ISO.exec(texto);
+  if (fechaIso) {
+    return `${fechaIso[1]}-${fechaIso[2]}-${fechaIso[3]}`;
+  }
+  const fechaHoraIso = REGEX_FECHA_HORA_ISO.exec(texto);
+  if (fechaHoraIso) {
+    return `${fechaHoraIso[1]}-${fechaHoraIso[2]}-${fechaHoraIso[3]}`;
+  }
+  const fecha = convertirAFechaValida(texto);
+  if (!fecha) {
+    return '';
+  }
+  return formatearFechaParaInput(fecha);
+}
+
+function normalizarValorHoraParaInput(valor) {
+  const texto = (valor || '').toString().trim();
+  if (!texto) {
+    return '';
+  }
+  const horaIso = REGEX_HORA_ISO.exec(texto);
+  if (horaIso) {
+    return `${horaIso[1]}:${horaIso[2]}:${horaIso[3] || '00'}`;
+  }
+  const fechaHoraIso = REGEX_FECHA_HORA_ISO.exec(texto);
+  if (fechaHoraIso) {
+    return `${fechaHoraIso[4]}:${fechaHoraIso[5]}:${fechaHoraIso[6] || '00'}`;
+  }
+  const fecha = convertirAFechaValida(texto);
+  if (!fecha) {
+    return '';
+  }
+  return formatearHoraParaInput(fecha);
+}
+
+function normalizarValorFechaHoraParaInput(valor) {
+  const texto = (valor || '').toString().trim();
+  if (!texto) {
+    return '';
+  }
+  const fechaHoraIso = REGEX_FECHA_HORA_ISO.exec(texto);
+  if (fechaHoraIso) {
+    return `${fechaHoraIso[1]}-${fechaHoraIso[2]}-${fechaHoraIso[3]}T${fechaHoraIso[4]}:${fechaHoraIso[5]}:${fechaHoraIso[6] || '00'
+      }`;
+  }
+  const fechaIso = REGEX_FECHA_ISO.exec(texto);
+  if (fechaIso) {
+    return `${fechaIso[1]}-${fechaIso[2]}-${fechaIso[3]}T00:00:00`;
+  }
+  const fecha = convertirAFechaValida(texto);
+  if (!fecha) {
+    return '';
+  }
+  return `${formatearFechaParaInput(fecha)}T${formatearHoraParaInput(fecha)}`;
+}
+
+function convertirAFechaValida(valor) {
+  if (valor instanceof Date) {
+    return Number.isNaN(valor.getTime()) ? null : valor;
+  }
+  const texto = (valor || '').toString().trim();
+  if (!texto) {
+    return null;
+  }
+  const fecha = new Date(texto);
+  if (Number.isNaN(fecha.getTime())) {
+    return null;
+  }
+  return fecha;
+}
+
+function formatearFechaParaInput(fecha) {
+  return `${fecha.getFullYear()}-${rellenarDosDigitos(fecha.getMonth() + 1)}-${rellenarDosDigitos(fecha.getDate())}`;
+}
+
+function formatearHoraParaInput(fecha) {
+  return `${rellenarDosDigitos(fecha.getHours())}:${rellenarDosDigitos(fecha.getMinutes())}:${rellenarDosDigitos(
+    fecha.getSeconds()
+  )}`;
+}
+
+function rellenarDosDigitos(valor) {
+  return String(valor).padStart(2, '0');
+}
+
 function crearEncabezadoCampoLibre(etiqueta, infoCampo) {
   const encabezado = document.createElement('div');
   encabezado.className = 'campo-libre__encabezado';
@@ -888,8 +1042,6 @@ function crearIndicadorMetadatos(infoCampo) {
   const alternar = (visible) => {
     indicador.classList.toggle('campo-libre__info--visible', Boolean(visible));
   };
-  indicador.addEventListener('mouseenter', () => alternar(true));
-  indicador.addEventListener('mouseleave', () => alternar(false));
   indicador.addEventListener('focus', () => alternar(true));
   indicador.addEventListener('blur', () => alternar(false));
 
@@ -912,6 +1064,11 @@ function aplicarMetadatosAlInput(elemento, infoCampo) {
   const descripcion = descripcionMetadatosCampo(infoCampo);
   if (descripcion) {
     elemento.title = descripcion;
+  }
+  const tipoCampo = normalizarTipoDatoCampoLibre(infoCampo);
+  if (tipoCampo === 'fecha' || tipoCampo === 'hora' || tipoCampo === 'fecha_hora') {
+    elemento.removeAttribute('maxLength');
+    return;
   }
   const longitud =
     infoCampo && Number.isFinite(infoCampo.longitud) && infoCampo.longitud > 0 ? infoCampo.longitud : 100;

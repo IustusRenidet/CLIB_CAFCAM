@@ -810,7 +810,7 @@ body {
 
 .campo-libre__tooltip {
   position: absolute;
-  top: calc(100% + 0.45rem);
+  bottom: calc(100% + 0.45rem);
   right: 0;
   min-width: 210px;
   background-color: var(--color-panel);
@@ -838,10 +838,9 @@ body {
   background-color: var(--color-panel);
   border-left: 1px solid var(--color-borde);
   border-top: 1px solid var(--color-borde);
-  transform: rotate(45deg);
+  transform: rotate(225deg);
 }
 
-.campo-libre__info:hover .campo-libre__tooltip,
 .campo-libre__info:focus-visible .campo-libre__tooltip,
 .campo-libre__info.campo-libre__info--visible .campo-libre__tooltip {
   opacity: 1;
