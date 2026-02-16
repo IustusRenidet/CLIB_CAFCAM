@@ -14,19 +14,19 @@ Funciona como una SPA servida por Express y empaquetada con Electron para distri
 ## Requisitos previos
 
 - Node.js 18 o superior.
-- Acceso a un servidor Firebird con las bases de Aspel SAE. Por defecto se intenta abrir `SAE90EMPRE01.FDB` en la ruta estándar:
+- Acceso a un servidor Firebird con las bases de Aspel SAE. Por defecto se intenta abrir `SAE90EMPRE.FDB` en la ruta estándar:
   `C:\Program Files (x86)\Common Files\Aspel\Sistemas Aspel\SAE9.00\Empresa01\Datos\SAE90EMPRE01.FDB`.
 
 ## Variables de entorno opcionales
 
-| Variable                | Descripción                                                        | Valor por defecto |
-| ----------------------- | ------------------------------------------------------------------ | ----------------- |
-| `PORT`                  | Puerto HTTP para la SPA                                            | `3001`            |
-| `FIREBIRD_DB_PATH`      | Ruta completa del archivo `.FDB`                                   | Ruta detectada    |
-| `FIREBIRD_HOST`         | IP o nombre del servidor Firebird                                  | `127.0.0.1`       |
-| `FIREBIRD_PORT`         | Puerto de Firebird                                                  | `3050`            |
-| `FIREBIRD_USER`         | Usuario con permisos de lectura/escritura                          | `SYSDBA`          |
-| `FIREBIRD_PASSWORD`     | Contraseña del usuario                                              | `masterkey`       |
+| Variable            | Descripción                               | Valor por defecto |
+| ------------------- | ----------------------------------------- | ----------------- |
+| `PORT`              | Puerto HTTP para la SPA                   | `3001`            |
+| `FIREBIRD_DB_PATH`  | Ruta completa del archivo `.FDB`          | Ruta detectada    |
+| `FIREBIRD_HOST`     | IP o nombre del servidor Firebird         | `127.0.0.1`       |
+| `FIREBIRD_PORT`     | Puerto de Firebird                        | `3050`            |
+| `FIREBIRD_USER`     | Usuario con permisos de lectura/escritura | `SYSDBA`          |
+| `FIREBIRD_PASSWORD` | Contraseña del usuario                    | `masterkey`       |
 
 ## Uso como aplicación web
 
@@ -76,17 +76,18 @@ npm run publish:github
 ```
 
 Notas:
+
 - El token necesita permisos para crear/editar releases del repo.
 - Conviene publicar después de tener el tag ya empujado (`npm run release:push`).
 
 ## API disponible
 
-| Método | Ruta                                          | Descripción                                                |
-| ------ | --------------------------------------------- | ---------------------------------------------------------- |
-| GET    | `/api/tipos-documento`                        | Catálogo de documentos soportados                          |
-| GET    | `/api/documentos/buscar`                      | Búsqueda por clave o cliente (`tipo`, `empresa`, `termino`) |
-| GET    | `/api/documentos/:tipo/:empresa/:cve_doc`     | Datos generales, campos libres y partidas                  |
-| PUT    | `/api/documentos/:tipo/:empresa/:cve_doc`     | Guarda los valores de `CAMPLIB1` a `CAMPLIB11`              |
-| GET    | `/api/estado`                                 | Comprobación rápida del backend                            |
+| Método | Ruta                                      | Descripción                                                 |
+| ------ | ----------------------------------------- | ----------------------------------------------------------- |
+| GET    | `/api/tipos-documento`                    | Catálogo de documentos soportados                           |
+| GET    | `/api/documentos/buscar`                  | Búsqueda por clave o cliente (`tipo`, `empresa`, `termino`) |
+| GET    | `/api/documentos/:tipo/:empresa/:cve_doc` | Datos generales, campos libres y partidas                   |
+| PUT    | `/api/documentos/:tipo/:empresa/:cve_doc` | Guarda los valores de `CAMPLIB1` a `CAMPLIB11`              |
+| GET    | `/api/estado`                             | Comprobación rápida del backend                             |
 
 La SPA incluida en `public/` consume estas rutas para mostrar y editar la información.
