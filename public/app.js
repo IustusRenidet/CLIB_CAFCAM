@@ -38,7 +38,7 @@ const REGEX_HORA_ISO = /^(\d{2}):(\d{2})(?::(\d{2}))?$/;
 const REGEX_FECHA_HORA_ISO = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/;
 const EMPRESA_POR_DEFECTO = '02';
 const EMPRESAS_PREDETERMINADAS = [
-  { clave: EMPRESA_POR_DEFECTO, nombre: 'CAF-CAM' }
+  { clave: EMPRESA_POR_DEFECTO, nombre: 'CAFCAM' }
 ];
 const MENSAJE_CAMBIOS_PENDIENTES = 'Tienes cambios sin guardar. Si continúas, no se aplicarán.';
 
@@ -246,7 +246,8 @@ async function seleccionarDocumento(registro) {
   await cargarDocumento(registro);
 }
 
-async function cargarDocumento(registro) {
+async function cargarDocumento(registro, opciones = {}) {
+  const propagarError = opciones && opciones.propagarError === true;
   try {
     const empresaDocumento = normalizarClaveEmpresa(registro.empresa) || obtenerEmpresaSeleccionada();
     const url = `/api/documentos/${registro.tipo}/${empresaDocumento}/${encodeURIComponent(registro.cveDoc)}`;
@@ -279,6 +280,9 @@ async function cargarDocumento(registro) {
     activarVistaDetalle();
   } catch (error) {
     mostrarMensaje(error.message);
+    if (propagarError) {
+      throw error;
+    }
   }
 }
 
@@ -732,6 +736,7 @@ async function guardarCampos(evento) {
   )}`;
 
   try {
+    const registroActual = documentoSeleccionado ? { ...documentoSeleccionado } : null;
     const respuesta = await fetch(url, {
       method: 'PUT',
       headers: {
@@ -740,9 +745,18 @@ async function guardarCampos(evento) {
       body: JSON.stringify({ campos, partidas })
     });
 
-    const datos = await respuesta.json();
-    if (!datos.ok) {
+    let datos = {};
+    try {
+      datos = await respuesta.json();
+    } catch (errorRespuesta) {
+      throw new Error('El servidor devolvio una respuesta invalida al guardar.');
+    }
+    if (!respuesta.ok || !datos.ok) {
       throw new Error(datos.mensaje || 'No fue posible guardar los cambios.');
+    }
+
+    if (registroActual) {
+      await cargarDocumento(registroActual, { propagarError: true });
     }
 
     cambiosPendientes = false;

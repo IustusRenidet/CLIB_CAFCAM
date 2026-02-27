@@ -46,7 +46,7 @@ Electron levanta el mismo servidor web en un puerto local disponible y carga la 
 
 ## Releases (versionado)
 
-Los scripts de release crean commit y tag (`vX.Y.Z`) usando `npm version`.
+Los scripts de release crean commit y tag (`vX.Y.Z`) usando `npm version` con mensaje `release: vX.Y.Z`.
 
 ```bash
 npm run release:patch
@@ -58,6 +58,14 @@ Después de versionar, sube branch + tags:
 
 ```bash
 npm run release:push
+```
+
+Si quieres versionar + empujar + publicar en GitHub en un solo comando:
+
+```bash
+npm run release:patch:publish
+npm run release:minor:publish
+npm run release:major:publish
 ```
 
 ## Publish (artefactos)
